@@ -19,7 +19,7 @@ export default function LuarLbsTable({
   return (
     <div className="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden">
       {/* HEADER */}
-      <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-white via-emerald-50/50 to-lime-50/40">
+      <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-white via-emerald-50/50 to-lime-50/40 dark:border-slate-700 dark:from-slate-900 dark:via-slate-800 dark:to-slate-800">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           
           {/* LEFT */}
@@ -32,11 +32,11 @@ export default function LuarLbsTable({
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-slate-800">
+              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
                 Data Luar LBS
               </h2>
 
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-slate-500 mt-1 dark:text-slate-300">
                 Monitoring lokasi tanam di luar wilayah LBS
               </p>
             </div>

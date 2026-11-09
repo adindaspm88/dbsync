@@ -72,7 +72,7 @@ export default function ComparisonTable({
   return (
     <div className="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden">
       {/* HEADER */}
-      <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-white via-sky-50/50 to-cyan-50/40">
+      <div className="px-6 py-5 border-b border-slate-100 bg-gradient-to-r from-white via-sky-50/50 to-cyan-50/40 dark:border-slate-700 dark:from-slate-900 dark:via-slate-800 dark:to-slate-800">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -84,12 +84,12 @@ export default function ComparisonTable({
               </div>
 
               <div>
-                <h2 className="text-xl text-left font-bold text-slate-800">
+                <h2 className="text-xl text-left font-bold text-slate-800 dark:text-slate-100">
                   {moduleInfo?.nama ||
                     "Perbandingan Data Statistik"}
                 </h2>
 
-                <p className="text-sm text-left text-slate-500 mt-1">
+                <p className="text-sm text-left text-slate-500 mt-1 dark:text-slate-300">
                   {moduleInfo?.deskripsi ||
                     "Monitoring perbandingan data BPS dan Dinas"}
                 </p>

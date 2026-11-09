@@ -35,8 +35,10 @@ export default function PerbandinganModul() {
         if (!active) return;
         setModuleInfo(modules.find((module) => module.kode === kode_modul) || null);
         setVariables(moduleVariables.map((variable) => ({
+          id: variable.id,
           kode_variabel: variable.kode,
           nama_variabel: variable.nama,
+          satuan: variable.satuan,
         })));
         setLookups(lookup);
         const availableYears = lookup.periodes.map((period) => Number(period.tahun)).filter(Number.isFinite);
@@ -81,6 +83,8 @@ export default function PerbandinganModul() {
     const key = `${row.wilayah_id}-${row.periode_id}`;
     if (!groups[key]) {
       groups[key] = {
+        wilayah_id: row.wilayah_id,
+        periode_id: row.periode_id,
         kode_kabupaten: row.kode_kabupaten,
         nama_wilayah: row.nama_wilayah,
         bulan: row.periode_label,
@@ -102,12 +106,20 @@ export default function PerbandinganModul() {
 
   const openEdit = (row, variable, item) => {
     const source = filtered.find((record) => record.wilayah_id === row.wilayah_id
-      && record.periode_label === row.bulan && record.kode_variabel === variable);
-    if (!source) {
+      && record.periode_id === row.periode_id && record.kode_variabel === variable);
+    const variableInfo = variables.find((record) => record.kode_variabel === variable);
+    const sourceDetails = source || (variableInfo && row.periode_id && row.wilayah_id ? {
+      variabel_id: variableInfo.id,
+      periode_id: row.periode_id,
+      wilayah_id: row.wilayah_id,
+      kode_variabel: variableInfo.kode_variabel,
+      satuan: variableInfo.satuan,
+    } : null);
+    if (!sourceDetails) {
       setError("Rincian data untuk baris ini tidak ditemukan.");
       return;
     }
-    setSelected({ source, variable });
+    setSelected({ source: sourceDetails, variable, isEdit: item?.nilai_dinas != null });
     setFormData({ nilai_dinas: item?.nilai_dinas ?? "", narasi_dinas: item?.narasi ?? "" });
     setOpenModal(true);
   };
@@ -142,7 +154,7 @@ export default function PerbandinganModul() {
       {loading
         ? <div className="rounded-3xl border bg-white p-10 text-center text-slate-600">Memuat data perbandingan…</div>
         : <ComparisonTable groupedData={groupedData} variables={variables} moduleInfo={moduleInfo} onEdit={openEdit} />}
-      <ModalInput openModal={openModal} setOpenModal={setOpenModal} formData={formData} setFormData={setFormData} onSubmit={submit} isEdit={!!selected?.source.nilai_dinas} />
+      <ModalInput openModal={openModal} setOpenModal={setOpenModal} formData={formData} setFormData={setFormData} onSubmit={submit} isEdit={selected?.isEdit ?? false} />
     </div>
   );
 }
