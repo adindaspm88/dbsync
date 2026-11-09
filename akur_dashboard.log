@@ -1,0 +1,36 @@
+2026-06-08 05:30:24,245 [ERROR] AkurAPI : Gagal Impor: (pymysql.err.OperationalError) (1364, "Field 'status_verifikasi' doesn't have a default value")
+[SQL: 
+                    INSERT INTO data_dinas 
+                    (variabel_id, periode_id, instansi_id, wilayah_id, nilai, 
+                     latitude, longitude, nama_kelompok, foto_fase, created_by, created_at)
+                    VALUES (%(v)s, %(p)s, %(i)s, %(w)s, %(n)s, %(lat)s, %(lng)s, %(kel)s, %(foto)s, %(cb)s, NOW())
+                ]
+[parameters: {'v': 1, 'p': 41, 'i': 1, 'w': 1, 'n': 30.0, 'lat': -6.564456, 'lng': 107.7661463, 'kel': 'Talang', 'foto': 'Foto 1', 'cb': 1}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-06-08 05:58:29,114 [ERROR] AkurAPI : Gagal Impor: (pymysql.err.OperationalError) (1364, "Field 'catatan' doesn't have a default value")
+[SQL: 
+                    INSERT INTO data_dinas 
+                    (variabel_id, periode_id, instansi_id, wilayah_id, nilai, 
+                     latitude, longitude, nama_kelompok, foto_fase, created_by, created_at)
+                    VALUES (%(v)s, %(p)s, %(i)s, %(w)s, %(n)s, %(lat)s, %(lng)s, %(kel)s, %(foto)s, %(cb)s, NOW())
+                ]
+[parameters: {'v': 2, 'p': 41, 'i': 1, 'w': 1, 'n': 30.0, 'lat': -6.564456, 'lng': 107.7661463, 'kel': 'Talang', 'foto': 'Foto 1', 'cb': 1}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-06-08 05:59:54,723 [ERROR] AkurAPI : Gagal Impor: (pymysql.err.OperationalError) (1364, "Field 'updated_at' doesn't have a default value")
+[SQL: 
+                    INSERT INTO data_dinas 
+                    (variabel_id, periode_id, instansi_id, wilayah_id, nilai, 
+                     latitude, longitude, nama_kelompok, foto_fase, created_by, created_at)
+                    VALUES (%(v)s, %(p)s, %(i)s, %(w)s, %(n)s, %(lat)s, %(lng)s, %(kel)s, %(foto)s, %(cb)s, NOW())
+                ]
+[parameters: {'v': 2, 'p': 41, 'i': 1, 'w': 1, 'n': 30.0, 'lat': -6.564456, 'lng': 107.7661463, 'kel': 'Talang', 'foto': 'Foto 1', 'cb': 1}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+2026-06-08 06:00:26,527 [ERROR] AkurAPI : Gagal Impor: (pymysql.err.OperationalError) (1364, "Field 'updated_at' doesn't have a default value")
+[SQL: 
+                    INSERT INTO data_dinas 
+                    (variabel_id, periode_id, instansi_id, wilayah_id, nilai, 
+                     latitude, longitude, nama_kelompok, foto_fase, created_by, created_at)
+                    VALUES (%(v)s, %(p)s, %(i)s, %(w)s, %(n)s, %(lat)s, %(lng)s, %(kel)s, %(foto)s, %(cb)s, NOW())
+                ]
+[parameters: {'v': 2, 'p': 41, 'i': 1, 'w': 1, 'n': 30.0, 'lat': -6.564456, 'lng': 107.7661463, 'kel': 'Talang', 'foto': 'Foto 1', 'cb': 1}]
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
