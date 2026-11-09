@@ -81,3 +81,38 @@ html.dark body {
 .dark .app-shell textarea {
   color-scheme: dark;
 }
+
+/* Flowbite renders dialogs in a portal outside the application shell. */
+html.dark [role="dialog"] [class~="bg-white"] {
+  background-color: #1e293b !important;
+}
+
+html.dark [role="dialog"] [class~="bg-slate-50"],
+html.dark [role="dialog"] [class~="bg-slate-100"] {
+  background-color: #0f172a !important;
+}
+
+html.dark [role="dialog"] [class~="text-slate-900"],
+html.dark [role="dialog"] [class~="text-slate-800"],
+html.dark [role="dialog"] [class~="text-slate-700"],
+html.dark [role="dialog"] [class~="text-slate-600"],
+html.dark [role="dialog"] label {
+  color: #e2e8f0 !important;
+}
+
+html.dark [role="dialog"] [class~="text-slate-500"] { color: #cbd5e1 !important; }
+html.dark [role="dialog"] [class~="text-slate-400"] { color: #94a3b8 !important; }
+
+html.dark [role="dialog"] input,
+html.dark [role="dialog"] select,
+html.dark [role="dialog"] textarea {
+  color-scheme: dark;
+  background-color: #0f172a;
+  color: #f1f5f9;
+  border-color: #475569;
+}
+
+html.dark [role="dialog"] [class~="border-slate-100"],
+html.dark [role="dialog"] [class~="border-slate-200"] {
+  border-color: #334155;
+}
