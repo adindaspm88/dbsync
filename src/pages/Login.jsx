@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertCircle,
@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import { login } from "../services/authService";
 import ThemeToggle from "../components/ThemeToggle";
-
-const THEME_STORAGE_KEY = "dbsync-theme";
+import { useTheme } from "../components/ThemeContext";
 
 function Brand({ compact = false }) {
   return (
@@ -143,18 +142,7 @@ function LoginForm() {
 }
 
 export default function Login() {
-  const [theme, setTheme] = useState(() => {
-    try {
-      const saved = localStorage.getItem(THEME_STORAGE_KEY);
-      return saved === "dark" || saved === "light" ? saved : "light";
-    } catch {
-      return "light";
-    }
-  });
-
-  useEffect(() => {
-    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Storage may be unavailable in private browsing. */ }
-  }, [theme]);
+  const { theme, setTheme } = useTheme();
 
   return (
     <main className={theme === "dark" ? "dark min-h-screen bg-slate-950 text-slate-100" : "min-h-screen bg-[#F3F6FB] text-slate-900"}>

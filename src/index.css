@@ -19,3 +19,65 @@
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 #root { min-height: 100vh; }
 button, input { font: inherit; }
+
+html.dark,
+html.dark body {
+  color-scheme: dark;
+  background: #0f172a;
+}
+
+.dark .app-shell {
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+.dark .app-shell [class~="bg-white"],
+.dark .app-shell [class~="bg-slate-50"],
+.dark .app-shell [class~="bg-slate-100"] {
+  background-color: #1e293b;
+}
+
+.dark .app-shell [class~="bg-sky-50"],
+.dark .app-shell [class~="bg-blue-50"],
+.dark .app-shell [class~="bg-emerald-50"],
+.dark .app-shell [class~="bg-amber-50"],
+.dark .app-shell [class~="bg-rose-50"] {
+  background-color: #1e293b;
+}
+
+.dark .app-shell [class~="bg-sky-100"],
+.dark .app-shell [class~="bg-blue-100"],
+.dark .app-shell [class~="bg-emerald-100"],
+.dark .app-shell [class~="bg-amber-100"],
+.dark .app-shell [class~="bg-rose-100"] {
+  background-color: #26364d;
+}
+
+.dark .app-shell [class~="text-slate-900"],
+.dark .app-shell [class~="text-slate-800"],
+.dark .app-shell [class~="text-slate-700"],
+.dark .app-shell [class~="text-slate-600"] {
+  color: #e2e8f0;
+}
+
+.dark .app-shell [class~="text-slate-500"] { color: #cbd5e1; }
+.dark .app-shell [class~="text-slate-400"] { color: #94a3b8; }
+.dark .app-shell [class~="text-sky-700"],
+.dark .app-shell [class~="text-blue-700"] { color: #7dd3fc; }
+.dark .app-shell [class~="text-emerald-700"] { color: #6ee7b7; }
+.dark .app-shell [class~="text-amber-800"] { color: #fde68a; }
+.dark .app-shell [class~="text-rose-600"] { color: #fda4af; }
+
+.dark .app-shell [class~="border-slate-100"],
+.dark .app-shell [class~="border-slate-200"],
+.dark .app-shell [class~="border-slate-300"],
+.dark .app-shell [class~="border-emerald-100"],
+.dark .app-shell [class~="border-sky-100"] {
+  border-color: #334155;
+}
+
+.dark .app-shell input,
+.dark .app-shell select,
+.dark .app-shell textarea {
+  color-scheme: dark;
+}

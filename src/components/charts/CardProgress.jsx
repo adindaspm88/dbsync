@@ -2,6 +2,7 @@ import {
   Sprout,
   ChevronRight,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export default function CardProgress({
   title,
@@ -13,21 +14,30 @@ export default function CardProgress({
   satuan = "",
   icon: Icon = Sprout,
 
-  kodeVariabel,
   moduleCode,
 
   onClick,
 }) {
+  const navigate = useNavigate();
   const handleClick = () => {
     if (onClick) return onClick();
 
-    window.location.href = `/modul/${moduleCode}/perbandingan/${kodeVariabel}`;
+    navigate(`/modul/${moduleCode}/perbandingan`);
   };
 
   return (
     <div
       onClick={handleClick}
-      className="relative bg-white rounded-2xl shadow-sm p-5 border-l-4 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          handleClick();
+        }
+      }}
+      role="link"
+      tabIndex={0}
+      aria-label={`Lihat perbandingan seluruh variabel modul untuk ${title}`}
+      className="relative bg-white rounded-2xl shadow-sm p-5 border-l-4 hover:shadow-md hover:-translate-y-1 transition-all duration-300 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       style={{ borderColor: color }}
     >
       {/* HEADER */}
