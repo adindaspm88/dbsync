@@ -1,368 +1,181 @@
-
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  LogIn,
-  Mail,
-  Lock,
-  BarChart3,
-  Database,
-  ShieldCheck,
-  Eye,
-  EyeOff,
   AlertCircle,
   ArrowRight,
+  BarChart3,
+  Database,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  LogIn,
+  Mail,
+  ShieldCheck,
 } from "lucide-react";
-
 import { login } from "../services/authService";
+import ThemeToggle from "../components/ThemeToggle";
 
-export default function Login() {
+const THEME_STORAGE_KEY = "dbsync-theme";
+
+function Brand({ compact = false }) {
+  return (
+    <a href="/" aria-label="DBSYNC beranda" className="inline-flex items-center gap-3">
+      <span className={`flex shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-2 shadow-sm ${compact ? "h-12 w-12" : "h-14 w-14"}`}>
+        <img src="/favicon.ico" alt="" className="h-full w-full object-contain" />
+      </span>
+      <span>
+        <span className={`${compact ? "text-xl" : "text-2xl"} block font-bold tracking-tight text-white`}>DBSYNC</span>
+        <span className="mt-0.5 block text-sm text-blue-100">Dinas BPS Synchronize</span>
+      </span>
+    </a>
+  );
+}
+
+const features = [
+  { icon: Database, title: "Integrasi Data", description: "Menghubungkan data BPS dan Dinas." },
+  { icon: BarChart3, title: "Perbandingan Statistik", description: "Mengidentifikasi kesesuaian dan perbedaan data." },
+  { icon: ShieldCheck, title: "Validasi dan Akuntabilitas", description: "Mendokumentasikan alasan setiap perbedaan." },
+];
+
+function BrandPanel() {
+  return (
+    <section className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-[#0B3675] to-[#145CA8] p-10 text-white lg:flex xl:p-12">
+      <div aria-hidden="true" className="absolute -right-32 -top-32 h-96 w-96 rounded-full border border-white/10" />
+      <div aria-hidden="true" className="absolute -right-20 -top-20 h-72 w-72 rounded-full border border-white/10" />
+      <div aria-hidden="true" className="absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-blue-300/15 blur-3xl" />
+
+      <div className="relative z-10"><Brand /></div>
+
+      <div className="relative z-10 my-12 max-w-lg">
+        <div className="mb-5 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-blue-100">
+          <span className="h-2 w-2 rounded-full bg-emerald-400" />
+          Platform Sinkronisasi Data
+        </div>
+        <h1 className="text-3xl font-bold leading-tight tracking-tight text-white xl:text-4xl">
+          Menyatukan Data,
+          <span className="mt-2 block text-blue-100">Menyelaraskan Informasi.</span>
+        </h1>
+        <p className="mt-5 max-w-md text-sm leading-6 text-blue-100">
+          Kolaborasi BPS dan Dinas untuk membandingkan, memvalidasi, serta menjaga konsistensi data statistik sektoral.
+        </p>
+        <div className="mt-9 space-y-5">
+          {features.map(({ icon: Icon, title, description }) => (
+            <div className="flex items-center gap-4" key={title}>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15 text-white"><Icon size={21} aria-hidden="true" /></span>
+              <span><span className="block text-sm font-semibold text-white">{title}</span><span className="mt-0.5 block text-xs leading-5 text-blue-100">{description}</span></span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <footer className="relative z-10 flex items-center justify-between border-t border-white/20 pt-5 text-xs text-blue-100">
+        <span>© 2026 Badan Pusat Statistik</span><span className="font-semibold">Jawa Barat</span>
+      </footer>
+    </section>
+  );
+}
+
+function LoginField({ id, label, type = "text", icon: Icon, value, onChange, placeholder, autoComplete, trailing }) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">{label}</label>
+      <div className="relative">
+        <Icon size={18} aria-hidden="true" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
+        <input
+          id={id} type={type} autoComplete={autoComplete} required value={value}
+          onChange={onChange} placeholder={placeholder}
+          className="w-full rounded-xl border border-slate-300 bg-slate-50 py-3 pl-11 pr-12 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-600/15 dark:border-slate-600 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-400 dark:focus:border-blue-400 dark:focus:bg-slate-800 dark:focus:ring-blue-400/20"
+        />
+        {trailing}
+      </div>
+    </div>
+  );
+}
+
+function LoginForm() {
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setError("");
-
     try {
-      const data = await login(email, password);
-
+      const data = await login(email.trim(), password);
       localStorage.setItem("token", data.access_token);
       localStorage.setItem("user", JSON.stringify(data.user));
-
       navigate("/");
-    } catch (error) {
-      setError(
-        error.response?.data?.detail ||
-        "Email atau password tidak sesuai. Silakan coba kembali."
-      );
+    } catch (err) {
+      setError(err.response?.data?.detail || "Email atau password tidak sesuai. Silakan coba kembali.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center p-4 sm:p-6">
-
-      <div className="w-full max-w-5xl min-h-[450px] overflow-hidden rounded-3xl bg-white shadow-xl shadow-slate-200/60 border border-slate-200/70 grid grid-cols-1 lg:grid-cols-2">
-
-        {/* =========================================
-            LEFT SIDE
-        ========================================= */}
-
-        <section className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-[#0B3675] to-[#145CA8] p-10 xl:p-12 text-white">
-
-          {/* Subtle decoration */}
-          <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full border border-white/[0.08]" />
-          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full border border-white/[0.08]" />
-          <div className="absolute -bottom-40 -left-24 h-96 w-96 rounded-full bg-blue-400/10 blur-3xl" />
-
-          {/* Brand */}
-          <div className="relative z-10 flex items-center gap-4">
-
-            <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-white p-2 shadow-lg">
-              <img
-                src="/favicon.ico"
-                alt="DBSYNC"
-                className="h-full w-full object-contain"
-              />
-            </div>
-
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-blue-100">
-                DBSYNC
-              </h1>
-
-              <p className="mt-0.5 text-sm text-blue-100">
-                Dinas BPS Synchronize
-              </p>
-            </div>
-          </div>
-
-          {/* Main content */}
-          <div className="relative z-10 my-12 max-w-lg">
-
-            <div className="mb-5 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-              Data Synchronization Platform
-            </div>
-
-            <h2 className="text-3xl xl:text-4xl font-bold leading-[1.2] tracking-tight text-blue-200">
-              Menyatukan Data,
-              <span className="block mt-2 text-blue-200">
-                Menyelaraskan Informasi.
-              </span>
-            </h2>
-
-            {/* <p className="mt-6 max-w-md text-base leading-8 text-blue-100">
-              Platform kolaborasi BPS dan Dinas untuk
-              membandingkan, memvalidasi, serta memastikan
-              konsistensi data statistik sektoral.
-            </p> */}
-
-            {/* Features */}
-            <div className="mt-10 space-y-4">
-
-              <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-blue-100">
-                  <Database size={21} />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    Integrasi Data
-                  </p>
-                  <p className="mt-0.5 text-xs text-blue-200">
-                    Menghubungkan data BPS dan Dinas.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-blue-100">
-                  <BarChart3 size={21} />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    Perbandingan Statistik
-                  </p>
-                  <p className="mt-0.5 text-xs text-blue-200">
-                    Mengidentifikasi kesesuaian dan perbedaan data.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 text-blue-100">
-                  <ShieldCheck size={21} />
-                </div>
-
-                <div>
-                  <p className="text-sm font-semibold text-white">
-                    Validasi dan Akuntabilitas
-                  </p>
-                  <p className="mt-0.5 text-xs text-blue-200">
-                    Mendokumentasikan alasan setiap perbedaan.
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="relative z-10 flex items-center justify-between border-t border-white/15 pt-6">
-            <p className="text-xs text-blue-200">
-              © 2026 Badan Pusat Statistik
-            </p>
-
-            <p className="text-xs font-medium text-blue-200">
-              Jawa Barat
-            </p>
-          </div>
-
-        </section>
-
-        {/* =========================================
-            RIGHT SIDE - LOGIN FORM
-        ========================================= */}
-
-        <section className="flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-10 xl:px-14">
-
-          <div className="mx-auto w-full max-w-md">
-
-            {/* Mobile Brand */}
-            <div className="mb-10 flex items-center gap-3 lg:hidden">
-
-              <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-white border border-slate-200 p-2">
-                <img
-                  src="/favicon.ico"
-                  alt="DBSYNC"
-                  className="h-full w-full object-contain"
-                />
-              </div>
-
-              <div>
-                <h1 className="text-xl font-bold text-[#1254A4]">
-                  DBSYNC
-                </h1>
-                <p className="text-xs text-slate-500">
-                  Dinas BPS Synchronize
-                </p>
-              </div>
-
-            </div>
-
-            {/* Form Header */}
-            <div className="mb-7">
-
-              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-[#1254A4]">
-                <LogIn size={23} />
-              </div>
-
-              <h2 className="text-2xl font-bold tracking-tight text-slate-800">
-                Selamat Datang
-              </h2>
-
-              <p className="mt-3 text-sm leading-6 text-slate-500">
-                Masuk ke akun DBSYNC untuk mengakses
-                dashboard dan monitoring data.
-              </p>
-
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div
-                role="alert"
-                className="mb-6 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4"
-              >
-                <AlertCircle
-                  size={19}
-                  className="mt-0.5 shrink-0 text-red-500"
-                />
-
-                <p className="text-sm leading-5 text-red-700">
-                  {error}
-                </p>
-              </div>
-            )}
-
-            {/* Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-
-              {/* Email */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
-                  Email
-                </label>
-
-                <div className="relative">
-
-                  <Mail
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-
-                  <input
-                    id="email"
-                    type="email"
-                    autoComplete="username"
-                    required
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setError("");
-                    }}
-                    placeholder="nama@bps.go.id"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-3 pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
-                  />
-
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="mb-2 block text-sm font-semibold text-slate-700"
-                >
-                  Password
-                </label>
-
-                <div className="relative">
-
-                  <Lock
-                    size={18}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-                  />
-
-                  <input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    required
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setError("");
-                    }}
-                    placeholder="Masukkan password"
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-3 pl-11 pr-12 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50"
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-slate-700"
-                  >
-                    {showPassword ? (
-                      <EyeOff size={18} />
-                    ) : (
-                      <Eye size={18} />
-                    )}
-                  </button>
-
-                </div>
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="group mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1254A4] py-3 text-sm font-semibold text-white shadow-md shadow-blue-900/10 transition hover:bg-[#0B3675] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Memproses...
-                  </>
-                ) : (
-                  <>
-                    Masuk ke DBSYNC
-                    <ArrowRight
-                      size={17}
-                      className="transition-transform group-hover:translate-x-1"
-                    />
-                  </>
-                )}
-              </button>
-
-            </form>
-
-            {/* Footer */}
-            <div className="mt-7 border-t border-slate-100 pt-6 text-center">
-
-              <div className="flex items-center justify-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                <p className="text-xs font-medium text-slate-500">
-                  Sistem Monitoring dan Sinkronisasi Data
-                </p>
-              </div>
-
-              <p className="mt-3 text-xs text-slate-400">
-                Badan Pusat Statistik · 2026
-              </p>
-
-            </div>
-
-          </div>
-
-        </section>
-
+    <>
+      <div className="mb-7">
+        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200"><LogIn size={23} aria-hidden="true" /></div>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Selamat Datang</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">Masuk ke akun DBSYNC untuk mengakses dashboard dan monitoring data.</p>
       </div>
-    </div>
+
+      {error && <div role="alert" className="mb-6 flex items-start gap-3 rounded-xl border border-red-300 bg-red-50 p-4 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-100"><AlertCircle size={19} aria-hidden="true" className="mt-0.5 shrink-0" /><p className="text-sm leading-5">{error}</p></div>}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <LoginField id="email" label="Email" icon={Mail} value={email} autoComplete="username" placeholder="nama@bps.go.id" onChange={(event) => { setEmail(event.target.value); setError(""); }} />
+        <LoginField
+          id="password" label="Password" icon={LockKeyhole} type={showPassword ? "text" : "password"}
+          value={password} autoComplete="current-password" placeholder="Masukkan password"
+          onChange={(event) => { setPassword(event.target.value); setError(""); }}
+          trailing={<button type="button" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"} className="absolute right-3.5 top-1/2 -translate-y-1/2 rounded-md p-1 text-slate-600 transition hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:text-slate-300 dark:hover:text-white"><span className="sr-only">{showPassword ? "Sembunyikan password" : "Tampilkan password"}</span>{showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}</button>}
+        />
+        <button type="submit" disabled={loading} className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-[#1254A4] py-3.5 text-sm font-semibold text-white shadow-md shadow-blue-900/15 transition hover:bg-[#0B3675] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-500/30 disabled:cursor-not-allowed disabled:opacity-60">
+          {loading ? <><span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />Memproses...</> : <>Masuk ke DBSYNC<ArrowRight size={17} aria-hidden="true" className="transition-transform group-hover:translate-x-1" /></>}
+        </button>
+      </form>
+    </>
+  );
+}
+
+export default function Login() {
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      return saved === "dark" || saved === "light" ? saved : "light";
+    } catch {
+      return "light";
+    }
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Storage may be unavailable in private browsing. */ }
+  }, [theme]);
+
+  return (
+    <main className={theme === "dark" ? "dark min-h-screen bg-slate-950 text-slate-100" : "min-h-screen bg-[#F3F6FB] text-slate-900"}>
+      <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center p-4 sm:p-6 lg:p-10">
+        <div className="relative grid min-h-[620px] w-full max-w-6xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900 dark:shadow-black/30 lg:grid-cols-2">
+          <BrandPanel />
+          <section className="flex flex-col justify-center px-6 py-9 sm:px-10 lg:px-10 xl:px-14">
+            <div className="mb-9 flex items-center justify-between gap-4 lg:justify-end">
+              <div className="lg:hidden"><Brand compact /></div>
+              <ThemeToggle theme={theme} onToggle={() => setTheme((current) => current === "dark" ? "light" : "dark")} />
+            </div>
+            <div className="mx-auto w-full max-w-md">
+              <LoginForm />
+              <footer className="mt-8 border-t border-slate-200 pt-6 text-center dark:border-slate-700">
+                <p className="flex items-center justify-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300"><span className="h-2 w-2 rounded-full bg-emerald-500" />Sistem Monitoring dan Sinkronisasi Data</p>
+                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Badan Pusat Statistik · 2026</p>
+              </footer>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
   );
 }
