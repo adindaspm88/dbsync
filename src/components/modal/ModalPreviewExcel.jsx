@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   Modal,
   ModalBody,
@@ -10,6 +11,7 @@ import {
   FileSpreadsheet,
   Database,
 } from "lucide-react";
+import TablePagination from "../tables/TablePagination";
 
 export default function ModalPreviewExcel({
   open,
@@ -18,6 +20,14 @@ export default function ModalPreviewExcel({
   onSave,
   loading = false,
 }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const paginatedData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
+
   return (
     <Modal
       show={open}
@@ -85,7 +95,7 @@ export default function ModalPreviewExcel({
             {/* TABLE */}
             {data.length > 0 ? (
               <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                <div className="overflow-auto max-h-[500px]">
+                <div className="max-h-[65vh] overflow-auto">
                   <table className="min-w-full text-sm">
                     <thead className="sticky top-0 z-10">
                       <tr>
@@ -110,7 +120,7 @@ export default function ModalPreviewExcel({
                     </thead>
 
                     <tbody>
-                      {data.map(
+                      {paginatedData.map(
                         (row, rowIndex) => (
                           <tr
                             key={rowIndex}
@@ -147,6 +157,7 @@ export default function ModalPreviewExcel({
                     </tbody>
                   </table>
                 </div>
+                <TablePagination totalItems={data.length} currentPage={currentPage} pageSize={pageSize} onPageChange={setCurrentPage}/>
               </div>
             ) : (
               <div className="py-14 text-center">

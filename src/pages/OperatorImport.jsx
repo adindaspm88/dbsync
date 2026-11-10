@@ -6,6 +6,7 @@ import { getCurrentUser } from "../services/adminService";
 import { getModules, getModuleVariables } from "../services/dashboardService";
 import { importData } from "../services/importService";
 import { parseExcelFile } from "../utils/excelParser";
+import TablePagination from "../components/tables/TablePagination";
 
 const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100";
 
@@ -17,10 +18,15 @@ export default function OperatorImport() {
   const [variableId, setVariableId] = useState("");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState([]);
+  const [previewPage, setPreviewPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const previewPageSize = 10;
+  const paginatedPreview = preview.slice((previewPage - 1) * previewPageSize, previewPage * previewPageSize);
+
+  useEffect(() => { setPreviewPage(1); }, [preview]);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +86,7 @@ export default function OperatorImport() {
       const rows = await parseExcelFile(selectedFile);
       if (!rows.length) throw new Error("File Excel tidak berisi baris data.");
       setFile(selectedFile);
-      setPreview(rows.slice(0, 6));
+      setPreview(rows);
     } catch (parseError) {
       setError(parseError.message || "File Excel tidak dapat dibaca.");
     }
@@ -130,7 +136,7 @@ export default function OperatorImport() {
           <input type="file" accept=".xls,.xlsx" className="sr-only" onChange={(event) => selectFile(event.target.files?.[0])}/>
         </label>
 
-        {preview.length > 0 && <div className="space-y-2"><h2 className="font-semibold text-slate-800">Pratinjau (maksimal 6 baris)</h2><div className="overflow-x-auto rounded-xl border border-slate-200"><table className="min-w-full text-left text-xs"><thead className="bg-slate-100 text-slate-700"><tr>{Object.keys(preview[0]).map((key) => <th key={key} className="whitespace-nowrap px-3 py-2">{key}</th>)}</tr></thead><tbody>{preview.map((row, index) => <tr key={index} className="border-t border-slate-100">{Object.values(row).map((value, col) => <td key={col} className="whitespace-nowrap px-3 py-2 text-slate-700">{String(value ?? "")}</td>)}</tr>)}</tbody></table></div></div>}
+        {preview.length > 0 && <div className="space-y-2"><h2 className="font-semibold text-slate-800 dark:text-slate-100">Pratinjau data ({preview.length} baris)</h2><div className="max-h-[65vh] overflow-auto rounded-xl border border-slate-200 dark:border-slate-700"><table className="min-w-full text-left text-xs"><thead className="sticky top-0 z-10 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><tr>{Object.keys(preview[0]).map((key) => <th key={key} className="whitespace-nowrap px-3 py-2">{key}</th>)}</tr></thead><tbody>{paginatedPreview.map((row, index) => <tr key={(previewPage - 1) * previewPageSize + index} className="border-t border-slate-100 dark:border-slate-700">{Object.values(row).map((value, col) => <td key={col} className="whitespace-nowrap px-3 py-2 text-slate-700 dark:text-slate-200">{String(value ?? "")}</td>)}</tr>)}</tbody></table></div><TablePagination totalItems={preview.length} currentPage={previewPage} pageSize={previewPageSize} onPageChange={setPreviewPage}/></div>}
 
         <div className="flex justify-end"><button type="submit" disabled={!file || !variableId || busy} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"><Upload size={17}/>{busy ? "Mengimpor…" : "Import data"}</button></div>
       </form>

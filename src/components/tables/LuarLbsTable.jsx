@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   MapPinned,
   CalendarDays,
@@ -7,6 +8,7 @@ import {
   Plus,
   Upload,
 } from "lucide-react";
+import TablePagination from "./TablePagination";
 
 const formatNumber = (value) =>
   new Intl.NumberFormat("id-ID").format(value);
@@ -21,6 +23,14 @@ export default function LuarLbsTable({
   onAdd,
   onViewLocation,
 }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const paginatedData = data.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [data]);
+
   return (
     <div className="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden">
       {/* HEADER */}
@@ -101,7 +111,7 @@ export default function LuarLbsTable({
       </div>
 
       {/* TABLE */}
-      <div className="overflow-x-auto">
+      <div className="max-h-[65vh] overflow-auto">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead className="sticky top-0 z-10">
             <tr>
@@ -152,7 +162,7 @@ export default function LuarLbsTable({
           </thead>
 
           <tbody>
-            {data.map((item, index) => (
+            {paginatedData.map((item, index) => (
               <tr
                 key={index}
                 className="hover:bg-emerald-50/30 transition-all"
@@ -326,6 +336,8 @@ export default function LuarLbsTable({
           </tbody>
         </table>
       </div>
+
+      <TablePagination totalItems={data.length} currentPage={currentPage} pageSize={pageSize} onPageChange={setCurrentPage}/>
 
       {/* EMPTY */}
       {data.length === 0 && (

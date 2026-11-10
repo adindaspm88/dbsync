@@ -110,7 +110,7 @@ export default function ComparisonTable({
       </div>
 
       {/* TABLE */}
-      <div className="overflow-x-auto">
+      <div className="max-h-[65vh] overflow-auto">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead className="sticky top-0 z-10">
             {/* HEADER 1 */}
@@ -345,7 +345,7 @@ export default function ComparisonTable({
 
       {groupedData.length > 0 && (
 
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-white">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
 
           <div className="text-sm text-slate-500">
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, MapPinned, Wheat } from "lucide-react";
 import LuarLbsTable from "../../components/tables/LuarLbsTable";
@@ -19,7 +19,7 @@ export default function LuarLbsPage() {
   const refresh=async()=>{try{setData(await getLuarLbsData(kodeModul));}catch{setError("Data Luar LBS tidak dapat dimuat.");}};
   useEffect(()=>{Promise.all([getLookups(),getModuleVariables(kodeModul),getLuarLbsData(kodeModul)]).then(([lookup,vars,rows])=>{setLookups(lookup);setVariable(vars.find(v=>["LT_LLBS","L_LBS"].includes(v.kode)));setData(rows);}).catch(()=>setError("Informasi modul atau data Luar LBS tidak dapat dimuat."));},[kodeModul]);
   const kecamatanList=[...new Set(data.map(d=>d.kecamatan).filter(Boolean))];
-  const filteredData=selectedKecamatan?data.filter(d=>d.kecamatan===selectedKecamatan):data;
+  const filteredData=useMemo(()=>selectedKecamatan?data.filter(d=>d.kecamatan===selectedKecamatan):data,[data,selectedKecamatan]);
   const handleFileChange=async(e)=>{const file=e.target.files?.[0];if(!file)return;try{setPreviewData(await parseExcelFile(file));setSelectedFile(file);setShowImport(true);}catch{setError("File Excel tidak dapat dibaca.");}e.target.value="";};
   const handleSaveImport=async()=>{if(!selectedFile||!variable)return;setBusy(true);try{await importLuarLbs(selectedFile,variable.id);setShowImport(false);setSelectedFile(null);setPreviewData([]);await refresh();}catch(e){setError(e.response?.data?.detail||"Import gagal. Periksa format kolom Excel.");}finally{setBusy(false);}};
   const handleSaveForm=async()=>{if(!variable||!form.wilayah_id||!form.periode_id){setError("Pilih wilayah dan periode terlebih dahulu.");return;}setBusy(true);try{await saveLuarLbs({variabel_id:variable.id,periode_id:Number(form.periode_id),wilayah_id:Number(form.wilayah_id),nilai:Number(form.nilai_dinas),nama_kelompok:form.kelompok||null,latitude:form.latitude?Number(form.latitude):null,longitude:form.longitude?Number(form.longitude):null,foto_fase:form.foto_fase||null,foto_polygon:form.polygon||null});setShowForm(false);setForm(blank);await refresh();}catch(e){setError(e.response?.data?.detail||"Data gagal disimpan.");}finally{setBusy(false);}};
