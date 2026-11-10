@@ -61,7 +61,7 @@ export default function DashboardModul() {
     const latest = new Map();
     const sorted = [...data].sort((a, b) => Number(b.periode_id) - Number(a.periode_id));
     for (const row of sorted) if (!latest.has(row.variabel_id)) latest.set(row.variabel_id, row);
-    return [...latest.values()];
+    return [...latest.values()].filter((row) => !["LT_LLBS", "L_LBS"].includes(row.kode));
   }, [data]);
 
   const groups = useMemo(() => {
