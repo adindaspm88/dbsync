@@ -48,6 +48,7 @@ export default function MapLocationModal({ item, onClose }) {
     if (!item || !hasCoordinates || !mapElement.current) return undefined;
     let map;
     let active = true;
+    let fitFrame;
 
     loadLeaflet().then((L) => {
       if (!active || !mapElement.current) return;
@@ -58,6 +59,7 @@ export default function MapLocationModal({ item, onClose }) {
       }).addTo(map);
 
       const center = [latitude, longitude];
+      map.setView(center, 13);
       const radius = Number.isFinite(area) && area > 0
         ? Math.sqrt((area * 10000) / Math.PI)
         : 30;
@@ -76,9 +78,14 @@ export default function MapLocationModal({ item, onClose }) {
         fillOpacity: 1,
       }).addTo(map);
 
-      map.fitBounds(areaCircle.getBounds(), { padding: [36, 36], maxZoom: 17 });
-      window.setTimeout(() => map?.invalidateSize(), 100);
-      setLoading(false);
+      map.whenReady(() => {
+        fitFrame = window.requestAnimationFrame(() => {
+          if (!active || !map || !map._loaded) return;
+          map.invalidateSize({ pan: false });
+          map.fitBounds(areaCircle.getBounds(), { padding: [36, 36], maxZoom: 17 });
+          setLoading(false);
+        });
+      });
     }).catch((error) => {
       if (!active) return;
       setMapError(error.message || "Peta tidak dapat ditampilkan.");
@@ -87,6 +94,7 @@ export default function MapLocationModal({ item, onClose }) {
 
     return () => {
       active = false;
+      if (fitFrame) window.cancelAnimationFrame(fitFrame);
       map?.remove();
     };
   }, [item, latitude, longitude, area, hasCoordinates]);
