@@ -10,6 +10,8 @@ export default function Breadcrumb() {
   const [modules,setModules]=useState([]);
   useEffect(()=>{getModules().then(setModules).catch(()=>{});},[]);
   const links = [{ label: "Pilih Modul", to: "/" }];
+  if (parts[0] === "admin") links.push({ label: "Manajemen Sistem" });
+  if (parts[0] === "import") links.push({ label: "Import Data" });
   if (parts[0] === "modul" && parts[1]) {
     links.push({ label: modules.find((m)=>m.kode===parts[1])?.nama||parts[1], to: `/modul/${parts[1]}` });
     if (parts[2] === "luar-lbs") links.push({ label: labels[parts[2]] });

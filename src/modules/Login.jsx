@@ -12,7 +12,7 @@ export default function LoginPage() {
 
               <div>
                 <h1 className="text-2xl font-bold tracking-wide">
-                  AKUR JABAR
+                  DBSync
                 </h1>
                 <p className="text-sm text-slate-300 tracking-wider uppercase">
                   Modul Strategis Pangan
@@ -109,7 +109,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-8 pt-5 border-t border-gray-200 text-sm text-gray-500 text-center">
-            © 2026 AKUR JABAR • Badan Pusat Statistik
+            © 2026 DBSync • Badan Pusat Statistik
           </div>
         </div>
       </div>
