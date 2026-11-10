@@ -249,7 +249,7 @@ def save_luar_lbs(payload: LuarLbsValue, db=Depends(get_db), user=Depends(get_cu
 @router.get("/modules/{kode}/luar-lbs")
 def luar_lbs(kode: str, tahun: int | None = None, db=Depends(get_db)):
     return db.execute(text("""
-        SELECT d.id, w.nama_wilayah, w.kode_wilayah, w.parent_id,
+        SELECT d.id, w.nama_wilayah AS wilayah_name, w.nama_wilayah, w.kode_wilayah, w.parent_id,
                parent.nama_wilayah AS kecamatan, d.nilai AS nilai_dinas,
                d.nama_kelompok AS kelompok, d.latitude, d.longitude,
                p.periode_label, p.tahun, d.foto_fase, d.foto_polygon AS polygon
