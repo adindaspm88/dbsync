@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, Body
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 import pandas as pd
 import io
 
@@ -46,7 +47,10 @@ class LuarLbsValue(BaseModel):
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     # 1. cari user
     user = db.execute(text("""
-        SELECT * FROM users WHERE email = :email
+        SELECT u.*, r.nama_role, i.jenis_instansi
+        FROM users u JOIN master_role r ON r.id = u.role_id
+        LEFT JOIN master_instansi i ON i.id = u.instansi_id
+        WHERE u.email = :email
     """), {"email": payload.email}).mappings().first()
 
     # 2. validasi user
@@ -69,7 +73,22 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     return {
         "access_token": token,
         "token_type": "bearer",
-        "user": {"id": user["id"], "nama": user["nama"], "email": user["email"]}
+        "user": {
+            "id": user["id"], "nama": user["nama"], "email": user["email"],
+            "role": user["nama_role"], "role_id": user["role_id"],
+            "instansi_id": user.get("instansi_id"), "wilayah_id": user.get("wilayah_id"),
+            "jenis_instansi": user.get("jenis_instansi"),
+        }
+    }
+
+
+@router.get("/auth/me")
+def current_user(user=Depends(get_current_user)):
+    return {
+        "id": user["id"], "nama": user["nama"], "email": user["email"],
+        "role": user["nama_role"], "role_id": user["role_id"],
+        "instansi_id": user.get("instansi_id"), "wilayah_id": user.get("wilayah_id"),
+        "jenis_instansi": user.get("jenis_instansi"),
     }
 
 
@@ -231,7 +250,8 @@ class UserCreate(BaseModel):
     role_id: int
 
 @router.post("/users/create")
-def create_user(payload: UserCreate, db=Depends(get_db)):
+def create_user(payload: UserCreate, db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin"])
 
     hashed = hash_password(payload.password)
 
@@ -248,6 +268,254 @@ def create_user(payload: UserCreate, db=Depends(get_db)):
     db.commit()
 
     return {"message": "User created"}
+
+
+class AdminUserCreate(BaseModel):
+    nama: str
+    email: str
+    password: str
+    role_id: int
+    instansi_id: int | None = None
+    wilayah_id: int | None = None
+
+
+class AdminUserUpdate(BaseModel):
+    nama: str
+    email: str
+    role_id: int
+    instansi_id: int | None = None
+    wilayah_id: int | None = None
+    password: str | None = None
+
+
+MASTER_CONFIG = {
+    "indikator": {
+        "table": "master_indikator",
+        "fields": ("kode", "nama", "deskripsi", "is_active"),
+        "required": ("kode", "nama", "deskripsi"), "active": True,
+    },
+    "instansi": {
+        "table": "master_instansi",
+        "fields": ("kode_instansi", "nama_instansi", "jenis_instansi", "wilayah_id", "is_active"),
+        "required": ("kode_instansi", "nama_instansi", "jenis_instansi", "wilayah_id"), "active": True,
+    },
+    "modul": {
+        "table": "master_modul",
+        "fields": ("indikator_id", "kode", "nama", "deskripsi", "is_active"),
+        "required": ("indikator_id", "kode", "nama", "deskripsi"), "active": True,
+    },
+    "variabel": {
+        "table": "master_variabel",
+        "fields": ("modul_id", "kode", "nama", "satuan", "deskripsi", "is_active"),
+        "required": ("modul_id", "kode", "nama"), "active": True,
+    },
+    "wilayah": {
+        "table": "master_wilayah",
+        "fields": ("kode_wilayah", "nama_wilayah", "level_wilayah", "parent_id"),
+        "required": ("kode_wilayah", "nama_wilayah", "level_wilayah"), "active": False,
+    },
+}
+
+
+def get_admin_wilayah_scope(user, db):
+    instansi_id = user.get("instansi_id")
+    if not instansi_id:
+        raise HTTPException(403, "Akun Admin Wilayah belum terhubung ke instansi.")
+    instansi = db.execute(text("SELECT wilayah_id, is_active FROM master_instansi WHERE id=:id"), {"id": instansi_id}).mappings().first()
+    if not instansi or not instansi["is_active"]:
+        raise HTTPException(403, "Instansi Admin Wilayah tidak aktif.")
+    wilayah_id = user.get("wilayah_id") or instansi["wilayah_id"]
+    operator_role_id = db.execute(text("SELECT id FROM master_role WHERE nama_role='Operator' AND is_active=1 LIMIT 1")).scalar()
+    if not wilayah_id or not operator_role_id:
+        raise HTTPException(403, "Instansi, wilayah, atau role Operator belum dikonfigurasi.")
+    return {"instansi_id": instansi_id, "wilayah_id": wilayah_id, "operator_role_id": operator_role_id}
+
+
+@router.get("/admin/options")
+def admin_options(db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin", "Admin Wilayah"])
+    if user["nama_role"] == "Admin Wilayah":
+        scope = get_admin_wilayah_scope(user, db)
+        return {
+            "roles": db.execute(text("SELECT id, nama_role FROM master_role WHERE is_active=1 AND id=:id"), {"id": scope["operator_role_id"]}).mappings().all(),
+            "instansi": db.execute(text("SELECT id, kode_instansi, nama_instansi FROM master_instansi WHERE id=:id"), {"id": scope["instansi_id"]}).mappings().all(),
+            "wilayah": db.execute(text("SELECT id, kode_wilayah, nama_wilayah, level_wilayah, parent_id FROM master_wilayah WHERE id=:id"), {"id": scope["wilayah_id"]}).mappings().all(),
+        }
+    return {
+        "roles": db.execute(text("SELECT id, nama_role FROM master_role WHERE is_active=1 AND nama_role IN ('Super Admin','Admin Wilayah','Operator') ORDER BY level_akses")).mappings().all(),
+        "instansi": db.execute(text("SELECT id, kode_instansi, nama_instansi FROM master_instansi WHERE is_active=1 ORDER BY nama_instansi")).mappings().all(),
+        "wilayah": db.execute(text("SELECT id, kode_wilayah, nama_wilayah, level_wilayah, parent_id FROM master_wilayah ORDER BY nama_wilayah")).mappings().all(),
+    }
+
+
+@router.get("/admin/users")
+def admin_users(db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin", "Admin Wilayah"])
+    scope = get_admin_wilayah_scope(user, db) if user["nama_role"] == "Admin Wilayah" else None
+    return db.execute(text("""
+        SELECT u.id, u.nama, u.email, u.role_id, r.nama_role AS role,
+               u.instansi_id, i.nama_instansi, u.wilayah_id, w.nama_wilayah,
+               u.is_active, u.last_login, u.created_at
+        FROM users u JOIN master_role r ON r.id=u.role_id
+        LEFT JOIN master_instansi i ON i.id=u.instansi_id
+        LEFT JOIN master_wilayah w ON w.id=u.wilayah_id
+        WHERE (:role_id IS NULL OR u.role_id=:role_id)
+          AND (:instansi_id IS NULL OR u.instansi_id=:instansi_id)
+          AND (:wilayah_id IS NULL OR u.wilayah_id=:wilayah_id)
+        ORDER BY u.nama, u.id
+    """), {
+        "role_id": scope["operator_role_id"] if scope else None,
+        "instansi_id": scope["instansi_id"] if scope else None,
+        "wilayah_id": scope["wilayah_id"] if scope else None,
+    }).mappings().all()
+
+
+@router.post("/admin/users", status_code=201)
+def admin_create_user(payload: AdminUserCreate, db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin", "Admin Wilayah"])
+    if len(payload.password) < 8:
+        raise HTTPException(422, "Password minimal 8 karakter.")
+    scope = get_admin_wilayah_scope(user, db) if user["nama_role"] == "Admin Wilayah" else None
+    if scope and payload.role_id != scope["operator_role_id"]:
+        raise HTTPException(403, "Admin Wilayah hanya dapat menambahkan Operator.")
+    role_id = scope["operator_role_id"] if scope else payload.role_id
+    instansi_id = scope["instansi_id"] if scope else payload.instansi_id
+    wilayah_id = scope["wilayah_id"] if scope else payload.wilayah_id
+    role = db.execute(text("SELECT id FROM master_role WHERE id=:id AND is_active=1 AND nama_role IN ('Super Admin','Admin Wilayah','Operator')"), {"id": role_id}).scalar()
+    if not role:
+        raise HTTPException(400, "Role tidak valid.")
+    try:
+        result = db.execute(text("""
+            INSERT INTO users (nama,email,password_hash,role_id,instansi_id,wilayah_id,created_by,is_active)
+            VALUES (:nama,:email,:password,:role_id,:instansi_id,:wilayah_id,:created_by,1)
+        """), {
+            "nama": payload.nama.strip(), "email": payload.email.strip().lower(),
+            "password": hash_password(payload.password), "role_id": role_id,
+            "instansi_id": instansi_id, "wilayah_id": wilayah_id,
+            "created_by": user["id"],
+        })
+        db.commit()
+        return {"id": result.lastrowid, "message": "Pengguna berhasil ditambahkan."}
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(409, "Email sudah digunakan atau relasi instansi/wilayah tidak valid.") from error
+
+
+@router.put("/admin/users/{user_id}")
+def admin_update_user(user_id: int, payload: AdminUserUpdate, db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin", "Admin Wilayah"])
+    if payload.password is not None and payload.password and len(payload.password) < 8:
+        raise HTTPException(422, "Password minimal 8 karakter.")
+    scope = get_admin_wilayah_scope(user, db) if user["nama_role"] == "Admin Wilayah" else None
+    if scope and payload.role_id != scope["operator_role_id"]:
+        raise HTTPException(403, "Admin Wilayah hanya dapat mengelola Operator.")
+    role_id = scope["operator_role_id"] if scope else payload.role_id
+    role = db.execute(text("SELECT id FROM master_role WHERE id=:id AND is_active=1 AND nama_role IN ('Super Admin','Admin Wilayah','Operator')"), {"id": role_id}).scalar()
+    if not role:
+        raise HTTPException(400, "Role tidak valid.")
+    target = db.execute(text("SELECT id, role_id, instansi_id, wilayah_id FROM users WHERE id=:id"), {"id": user_id}).mappings().first()
+    if not target:
+        raise HTTPException(404, "Pengguna tidak ditemukan.")
+    if scope and (target["role_id"] != scope["operator_role_id"] or target["instansi_id"] != scope["instansi_id"] or target["wilayah_id"] != scope["wilayah_id"]):
+        raise HTTPException(404, "Operator tidak ditemukan pada wilayah dan instansi Anda.")
+    if target["id"] == user["id"] and role_id != target["role_id"]:
+        raise HTTPException(400, "Role akun yang sedang digunakan tidak dapat diubah.")
+    params = {
+        "id": user_id, "nama": payload.nama.strip(), "email": payload.email.strip().lower(),
+        "role_id": role_id,
+        "instansi_id": scope["instansi_id"] if scope else payload.instansi_id,
+        "wilayah_id": scope["wilayah_id"] if scope else payload.wilayah_id,
+    }
+    password_sql = ""
+    if payload.password:
+        password_sql = ", password_hash=:password"
+        params["password"] = hash_password(payload.password)
+    try:
+        db.execute(text(f"UPDATE users SET nama=:nama,email=:email,role_id=:role_id,instansi_id=:instansi_id,wilayah_id=:wilayah_id{password_sql} WHERE id=:id"), params)
+        db.commit()
+        return {"message": "Pengguna berhasil diperbarui."}
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(409, "Email sudah digunakan atau relasi instansi/wilayah tidak valid.") from error
+
+
+@router.patch("/admin/users/{user_id}/active")
+def admin_set_user_active(user_id: int, is_active: bool = Body(..., embed=True), db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin", "Admin Wilayah"])
+    scope = get_admin_wilayah_scope(user, db) if user["nama_role"] == "Admin Wilayah" else None
+    target = db.execute(text("SELECT id, role_id, instansi_id, wilayah_id, is_active FROM users WHERE id=:id"), {"id": user_id}).mappings().first()
+    if not target:
+        raise HTTPException(404, "Pengguna tidak ditemukan.")
+    if scope and (target["role_id"] != scope["operator_role_id"] or target["instansi_id"] != scope["instansi_id"] or target["wilayah_id"] != scope["wilayah_id"]):
+        raise HTTPException(404, "Operator tidak ditemukan pada wilayah dan instansi Anda.")
+    if target["id"] == user["id"] and not is_active:
+        raise HTTPException(400, "Akun yang sedang digunakan tidak dapat dinonaktifkan.")
+    if target["role_id"] == user["role_id"] and not is_active:
+        super_admin_count = db.execute(text("SELECT COUNT(*) FROM users WHERE role_id=:role_id AND is_active=1"), {"role_id": target["role_id"]}).scalar()
+        if super_admin_count <= 1:
+            raise HTTPException(400, "Super Admin aktif terakhir tidak dapat dinonaktifkan.")
+    db.execute(text("UPDATE users SET is_active=:active WHERE id=:id"), {"active": int(is_active), "id": user_id})
+    db.commit()
+    return {"message": "Status pengguna diperbarui."}
+
+
+@router.get("/admin/masters/{master_name}")
+def admin_list_master(master_name: str, db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin"])
+    config = MASTER_CONFIG.get(master_name)
+    if not config:
+        raise HTTPException(404, "Master tidak ditemukan.")
+    return db.execute(text(f"SELECT * FROM {config['table']} ORDER BY id DESC")).mappings().all()
+
+
+@router.post("/admin/masters/{master_name}", status_code=201)
+def admin_create_master(master_name: str, payload: dict = Body(...), db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin"])
+    config = MASTER_CONFIG.get(master_name)
+    if not config:
+        raise HTTPException(404, "Master tidak ditemukan.")
+    fields = [field for field in config["fields"] if field in payload]
+    missing = [field for field in config["required"] if field not in payload or payload[field] in (None, "")]
+    if missing:
+        raise HTTPException(422, f"Kolom wajib diisi: {', '.join(missing)}")
+    params = {field: payload[field] for field in fields}
+    columns = ",".join(fields)
+    values = ",".join(f":{field}" for field in fields)
+    if master_name in ("indikator", "modul"):
+        columns += ",created_at"
+        values += ",NOW()"
+    try:
+        result = db.execute(text(f"INSERT INTO {config['table']} ({columns}) VALUES ({values})"), params)
+        db.commit()
+        return {"id": result.lastrowid, "message": "Master berhasil ditambahkan."}
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(409, "Kode sudah digunakan atau relasi induk tidak valid.") from error
+
+
+@router.put("/admin/masters/{master_name}/{record_id}")
+def admin_update_master(master_name: str, record_id: int, payload: dict = Body(...), db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin"])
+    config = MASTER_CONFIG.get(master_name)
+    if not config:
+        raise HTTPException(404, "Master tidak ditemukan.")
+    fields = [field for field in config["fields"] if field in payload]
+    if not fields:
+        raise HTTPException(422, "Tidak ada kolom yang diperbarui.")
+    params = {field: payload[field] for field in fields}
+    params["id"] = record_id
+    updates = ",".join(f"{field}=:{field}" for field in fields)
+    try:
+        result = db.execute(text(f"UPDATE {config['table']} SET {updates} WHERE id=:id"), params)
+        if result.rowcount == 0:
+            exists = db.execute(text(f"SELECT id FROM {config['table']} WHERE id=:id"), {"id": record_id}).scalar()
+            if not exists:
+                raise HTTPException(404, "Data master tidak ditemukan.")
+        db.commit()
+        return {"message": "Master berhasil diperbarui."}
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(409, "Kode sudah digunakan atau relasi induk tidak valid.") from error
 
 
 @router.get("/dashboard/cards")
@@ -445,98 +713,142 @@ def import_data(
     db: Session = Depends(get_db),
     user=Depends(get_current_user)
 ):
-
-    sumber = sumber.lower()
-    if sumber not in ["bps", "dinas"]:
-        raise HTTPException(400, "sumber harus bps/dinas")
-    
     require_roles(user, ["Operator", "Super Admin"])
-
-    if not file.filename.endswith((".xls", ".xlsx")):
+    requested_source = (sumber or "").lower()
+    if requested_source not in ["bps", "dinas"]:
+        raise HTTPException(400, "sumber harus bps/dinas")
+    if not file.filename or not file.filename.lower().endswith((".xls", ".xlsx")):
         raise HTTPException(400, "File harus Excel")
 
+    instance = None
+    if user.get("instansi_id"):
+        instance = db.execute(text("SELECT id,jenis_instansi,wilayah_id,is_active FROM master_instansi WHERE id=:id"), {"id": user["instansi_id"]}).mappings().first()
+    if user["nama_role"] == "Operator":
+        if not instance or not instance["is_active"]:
+            raise HTTPException(403, "Akun Operator harus terhubung ke instansi aktif.")
+        sumber = "bps" if instance["jenis_instansi"] == "bps" else "dinas"
+        wilayah_scope = user.get("wilayah_id") or instance["wilayah_id"]
+    else:
+        sumber = requested_source
+        wilayah_scope = user.get("wilayah_id") or (instance["wilayah_id"] if instance else None)
+
+    variable = db.execute(text("SELECT id FROM master_variabel WHERE id=:id AND is_active=1"), {"id": variabel_id}).scalar()
+    if not variable:
+        raise HTTPException(400, "Variabel tidak ditemukan atau tidak aktif.")
+
+    if instance and instance["is_active"] and user["nama_role"] == "Operator":
+        instansi_id = instance["id"]
+    else:
+        instansi_id = instance["id"] if instance and instance["is_active"] and instance["jenis_instansi"] == sumber else None
+
     df = pd.read_excel(io.BytesIO(file.file.read()))
+    if df.empty:
+        raise HTTPException(400, "File Excel tidak berisi data.")
 
-    wil = db.execute(text("SELECT id, nama_wilayah FROM master_wilayah")).fetchall()
-    map_wil = {w.nama_wilayah.upper(): w.id for w in wil}
+    regions = db.execute(text("SELECT id,kode_wilayah,nama_wilayah,parent_id FROM master_wilayah")).mappings().all()
+    by_code = {str(region["kode_wilayah"]).strip().upper(): region for region in regions}
+    by_name = defaultdict(list)
+    parent_by_id = {}
+    for region in regions:
+        by_name[region["nama_wilayah"].strip().upper()].append(region)
+        parent_by_id[region["id"]] = region["parent_id"]
+    periods = db.execute(text("SELECT id,nomor_periode,tahun FROM master_periode WHERE jenis_periode='bulanan' AND is_active=1")).mappings().all()
+    period_map = {(int(period["tahun"]), int(period["nomor_periode"])): period["id"] for period in periods}
 
-    per = db.execute(text("SELECT id, nomor_periode, tahun FROM master_periode")).fetchall()
-    map_per = {(p.tahun, p.nomor_periode): p.id for p in per}
+    def row_value(row, *keys):
+        for key in keys:
+            value = row.get(key)
+            if value is not None and not pd.isna(value) and str(value).strip():
+                return value
+        return None
+
+    def is_in_scope(region_id):
+        if not wilayah_scope:
+            return True
+        current = region_id
+        while current is not None:
+            if int(current) == int(wilayah_scope):
+                return True
+            current = parent_by_id.get(current)
+        return False
+
     count = 0
-
+    skipped = 0
     for row in df.to_dict("records"):
-
-        loc = str(
-            row.get("Desa") or 
-            row.get("Kota/Kabupaten") or 
-            row.get("Kecamatan") or ""
-        ).upper()
-
-        w_id = map_wil.get(loc) or user.get("wilayah_id") or db.execute(
-            text("SELECT id FROM master_wilayah WHERE level_wilayah='provinsi' LIMIT 1")
-        ).scalar()
-
-        dt = pd.to_datetime(row.get("Tgl Tanam"), errors="coerce")
-        if pd.isna(dt):
+        raw_location = row_value(row, "Kode Wilayah", "Kode Kabupaten", "Kode Desa", "Kode Kecamatan", "Wilayah ID", "Desa", "Kota/Kabupaten", "Kecamatan", "Wilayah")
+        region = None
+        if raw_location is not None:
+            location = str(raw_location).strip().upper()
+            if location.endswith(".0"):
+                location = location[:-2]
+            region = by_code.get(location)
+            if region is None:
+                matches = by_name.get(location, [])
+                if len(matches) == 1:
+                    region = matches[0]
+                elif wilayah_scope:
+                    region = next((match for match in matches if is_in_scope(match["id"])), None)
+            if region is None:
+                skipped += 1
+                continue
+        if region is None and wilayah_scope:
+            region_id = wilayah_scope
+        elif region is not None:
+            region_id = region["id"]
+        else:
+            region_id = db.execute(text("SELECT id FROM master_wilayah WHERE level_wilayah='provinsi' LIMIT 1")).scalar()
+        if not region_id or not is_in_scope(region_id):
+            skipped += 1
             continue
 
-        p_id = map_per.get((dt.year, dt.month))
-        if not p_id:
+        raw_date = row_value(row, "Tanggal", "Tgl Tanam", "Tanggal Data", "Periode")
+        dt = pd.to_datetime(raw_date, errors="coerce") if raw_date is not None else pd.NaT
+        if pd.isna(dt):
+            year = pd.to_numeric(row_value(row, "Tahun", "tahun"), errors="coerce")
+            month = pd.to_numeric(row_value(row, "Bulan", "bulan", "Nomor Periode"), errors="coerce")
+            if pd.isna(year) or pd.isna(month):
+                skipped += 1
+                continue
+            year, month = int(year), int(month)
+        else:
+            year, month = int(dt.year), int(dt.month)
+        period_id = period_map.get((year, month))
+        value_keys = ("Nilai BPS", "Nilai", "Luas", "nilai") if sumber == "bps" else ("Nilai Dinas", "Luas", "Nilai", "nilai", "Nilai BPS")
+        value = pd.to_numeric(row_value(row, *value_keys), errors="coerce")
+        if not period_id or pd.isna(value):
+            skipped += 1
+            continue
+
+        row_instansi_id = instansi_id or db.execute(text("SELECT id FROM master_instansi WHERE jenis_instansi=:jenis AND wilayah_id=:wilayah AND is_active=1 LIMIT 1"), {"jenis": sumber, "wilayah": region_id}).scalar()
+        if not row_instansi_id:
+            skipped += 1
             continue
 
         if sumber == "dinas":
-            sql = text("""
+            latitude = pd.to_numeric(row_value(row, "Latitude", "Lat"), errors="coerce")
+            longitude = pd.to_numeric(row_value(row, "Longitude", "Lng"), errors="coerce")
+            db.execute(text("""
                 INSERT INTO data_dinas
-                (variabel_id, periode_id, instansi_id, wilayah_id, nilai,
-                 latitude, longitude, nama_kelompok, created_by, updated_by, created_at)
-                VALUES (:v,:p,:i,:w,:n,:lat,:lng,:kel,:cb,:ub,NOW())
-                ON DUPLICATE KEY UPDATE
-                    nilai = VALUES(nilai),
-                    latitude = VALUES(latitude),
-                    longitude = VALUES(longitude),
-                    nama_kelompok = VALUES(nama_kelompok),
-                    updated_at = NOW()
-            """)
-
-            params = {
-                "v": variabel_id,
-                "p": p_id,
-                "i": user.get("instansi_id") or db.execute(text("SELECT id FROM master_instansi WHERE jenis_instansi='dinas' AND wilayah_id=:w AND is_active=1 LIMIT 1"), {"w": w_id}).scalar(),
-                "w": w_id,
-                "n": float(row.get("Luas") or 0),
-                "lat": float(row.get("Lat") or 0),
-                "lng": float(row.get("Lng") or 0),
-                "kel": str(row.get("Nama Kelompok") or ""),
-                "cb": user["id"],
-                "ub": user["id"]
-            }
-
+                    (variabel_id,periode_id,instansi_id,wilayah_id,nilai,latitude,longitude,nama_kelompok,created_by,updated_by,created_at)
+                VALUES (:v,:p,:i,:w,:n,:lat,:lng,:kel,:user_id,:user_id,NOW())
+                ON DUPLICATE KEY UPDATE nilai=VALUES(nilai),latitude=VALUES(latitude),longitude=VALUES(longitude),
+                    nama_kelompok=VALUES(nama_kelompok),updated_by=VALUES(updated_by),updated_at=NOW()
+            """), {
+                "v": variabel_id, "p": period_id, "i": row_instansi_id, "w": region_id, "n": float(value),
+                "lat": None if pd.isna(latitude) else float(latitude),
+                "lng": None if pd.isna(longitude) else float(longitude),
+                "kel": str(row_value(row, "Nama Kelompok", "Kelompok") or "") or None, "user_id": user["id"],
+            })
         else:
-            sql = text("""
-                INSERT INTO data_bps
-                (variabel_id, instansi_id, periode_id, wilayah_id, nilai, created_by, updated_by, created_at)
-                VALUES (:v,:i,:p,:w,:n,:cb,:ub,NOW())
-                ON DUPLICATE KEY UPDATE
-                    nilai = VALUES(nilai),
-                    updated_at = NOW()
-            """)
-
-            params = {
-                "v": variabel_id,
-                "i": user.get("instansi_id") or db.execute(text("SELECT id FROM master_instansi WHERE jenis_instansi='bps' AND wilayah_id=:w LIMIT 1"), {"w": w_id}).scalar(),
-                "p": p_id,
-                "w": w_id,
-                "n": float(row.get("Nilai BPS") or 0),
-                "cb": user["id"],
-                "ub": user["id"]
-            }
-
-        db.execute(sql, params)
+            db.execute(text("""
+                INSERT INTO data_bps (variabel_id,instansi_id,periode_id,wilayah_id,nilai,created_by,updated_by,created_at)
+                VALUES (:v,:i,:p,:w,:n,:user_id,:user_id,NOW())
+                ON DUPLICATE KEY UPDATE nilai=VALUES(nilai),updated_by=VALUES(updated_by),updated_at=NOW()
+            """), {"v": variabel_id, "i": row_instansi_id, "p": period_id, "w": region_id, "n": float(value), "user_id": user["id"]})
         count += 1
 
     db.commit()
-
-    return {"message": f"Berhasil import {count} data"}
+    return {"message": f"Berhasil import {count} data; {skipped} baris dilewati.", "imported": count, "skipped": skipped, "sumber": sumber}
 
 
 
