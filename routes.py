@@ -115,21 +115,42 @@ def module_variables(kode: str, db=Depends(get_db)):
 @router.get("/modules/{kode}/dashboard")
 def module_dashboard(kode: str, tahun: int | None = None, wilayah_id: int | None = None, db=Depends(get_db)):
     return db.execute(text("""
-        SELECT v.id AS variabel_id, v.kode, v.nama, v.satuan,
-               p.id AS periode_id, p.tahun, p.nomor_periode, p.periode_label,
-               COALESCE(SUM(b.nilai), 0) AS total_bps,
-               COALESCE(SUM(d.nilai), 0) AS total_dinas
+        WITH bps_aggregate AS (
+            SELECT b.variabel_id,b.periode_id,SUM(b.nilai) AS total_bps
+            FROM data_bps b
+            JOIN master_wilayah wb ON wb.id=b.wilayah_id
+            WHERE wb.level_wilayah='kabkot'
+              AND (:wilayah_id IS NULL
+                   OR :wilayah_id=(SELECT id FROM master_wilayah WHERE level_wilayah='provinsi' LIMIT 1)
+                   OR b.wilayah_id=:wilayah_id)
+            GROUP BY b.variabel_id,b.periode_id
+        ), dinas_aggregate AS (
+            SELECT d.variabel_id,d.periode_id,SUM(d.nilai) AS total_dinas
+            FROM data_dinas d
+            JOIN master_variabel vd ON vd.id=d.variabel_id
+            JOIN master_wilayah wd ON wd.id=d.wilayah_id
+            LEFT JOIN master_wilayah kecamatan ON kecamatan.id=wd.parent_id
+            LEFT JOIN master_wilayah kabkot ON kabkot.id=kecamatan.parent_id
+            WHERE (
+                wd.level_wilayah='kabkot'
+                OR (vd.kode='LT_LLBS' AND wd.level_wilayah='deskel')
+            )
+              AND (:wilayah_id IS NULL
+                   OR :wilayah_id=(SELECT id FROM master_wilayah WHERE level_wilayah='provinsi' LIMIT 1)
+                   OR wd.id=:wilayah_id
+                   OR (vd.kode='LT_LLBS' AND wd.level_wilayah='deskel' AND kabkot.id=:wilayah_id))
+            GROUP BY d.variabel_id,d.periode_id
+        )
+        SELECT v.id AS variabel_id,v.kode,v.nama,v.satuan,
+               p.id AS periode_id,p.tahun,p.jenis_periode,p.nomor_periode,p.periode_label,
+               COALESCE(b.total_bps,0) AS total_bps,
+               COALESCE(d.total_dinas,0) AS total_dinas
         FROM master_modul m JOIN master_variabel v ON v.modul_id=m.id
         JOIN master_periode p ON p.is_active=1
-        LEFT JOIN data_bps b ON b.variabel_id=v.id AND b.periode_id=p.id
-            AND b.wilayah_id IN (SELECT id FROM master_wilayah WHERE level_wilayah='kabkot')
-            AND (:wilayah_id IS NULL OR :wilayah_id=(SELECT id FROM master_wilayah WHERE level_wilayah='provinsi' LIMIT 1) OR b.wilayah_id=:wilayah_id)
-        LEFT JOIN data_dinas d ON d.variabel_id=v.id AND d.periode_id=p.id
-            AND d.wilayah_id IN (SELECT id FROM master_wilayah WHERE level_wilayah='kabkot')
-            AND (:wilayah_id IS NULL OR :wilayah_id=(SELECT id FROM master_wilayah WHERE level_wilayah='provinsi' LIMIT 1) OR d.wilayah_id=:wilayah_id)
+        LEFT JOIN bps_aggregate b ON b.variabel_id=v.id AND b.periode_id=p.id
+        LEFT JOIN dinas_aggregate d ON d.variabel_id=v.id AND d.periode_id=p.id
         WHERE m.kode=:kode AND m.is_active=1 AND v.is_active=1
-            AND (:tahun IS NULL OR p.tahun=:tahun) AND (b.id IS NOT NULL OR d.id IS NOT NULL)
-        GROUP BY v.id,v.kode,v.nama,v.satuan,p.id,p.tahun,p.nomor_periode,p.periode_label
+            AND (:tahun IS NULL OR p.tahun=:tahun) AND (b.total_bps IS NOT NULL OR d.total_dinas IS NOT NULL)
         ORDER BY p.tahun DESC,p.id DESC,v.id
     """), {"kode": kode, "tahun": tahun, "wilayah_id": wilayah_id}).mappings().all()
 
