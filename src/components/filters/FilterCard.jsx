@@ -65,7 +65,7 @@ export default function FilterCard({
           </label>
 
           <select
-            className="
+            className={`
               w-full rounded-xl border border-sky-100
               bg-white px-3 ${compact ? "py-2 text-xs" : "py-2.5 text-sm"}
               text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100
@@ -73,7 +73,7 @@ export default function FilterCard({
               focus:border-sky-400
               focus:ring-4 focus:ring-sky-100
               transition-all
-            "
+            `}
             value={selectedVariable}
             onChange={(e) =>
               setSelectedVariable(e.target.value)
@@ -106,7 +106,7 @@ export default function FilterCard({
           </label>
 
           <select
-            className="
+            className={`
               w-full rounded-xl border border-sky-100
               bg-white px-3 ${compact ? "py-2 text-xs" : "py-2.5 text-sm"}
               text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100
@@ -114,7 +114,7 @@ export default function FilterCard({
               focus:border-sky-400
               focus:ring-4 focus:ring-sky-100
               transition-all
-            "
+            `}
             value={selectedRegion}
             onChange={(e) =>
               setSelectedRegion(e.target.value)
@@ -146,7 +146,7 @@ export default function FilterCard({
           </label>
 
           <select
-            className="
+            className={`
               w-full rounded-xl border border-sky-100
               bg-white px-3 ${compact ? "py-2 text-xs" : "py-2.5 text-sm"}
               text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100
@@ -154,7 +154,7 @@ export default function FilterCard({
               focus:border-sky-400
               focus:ring-4 focus:ring-sky-100
               transition-all
-            "
+            `}
             value={selectedYear}
             onChange={(e) =>
               setSelectedYear(
