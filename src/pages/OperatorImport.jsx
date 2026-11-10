@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { AlertCircle, CheckCircle2, FileSpreadsheet, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
+import * as XLSX from "xlsx";
 import { getCurrentUser } from "../services/adminService";
 import { getModules, getModuleVariables } from "../services/dashboardService";
 import { importData } from "../services/importService";
 import { parseExcelFile } from "../utils/excelParser";
 
-const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100";
 
 export default function OperatorImport() {
   const [user, setUser] = useState(null);
@@ -47,6 +48,26 @@ export default function OperatorImport() {
 
   const source = user?.jenis_instansi === "bps" ? "bps" : "dinas";
   const sourceLabel = source === "bps" ? "BPS" : "Dinas";
+
+  const downloadTemplate = () => {
+    const headers = source === "bps"
+      ? ["Kode Wilayah", "Tanggal", "Nilai BPS"]
+      : ["Kode Wilayah", "Tanggal", "Nilai Dinas", "Nama Kelompok", "Latitude", "Longitude"];
+    const dataSheet = XLSX.utils.aoa_to_sheet([headers]);
+    dataSheet["!cols"] = headers.map((header) => ({ wch: Math.max(18, header.length + 4) }));
+    const instructions = XLSX.utils.aoa_to_sheet([
+      ["Petunjuk pengisian template"],
+      ["Kode Wilayah", "Isi dengan kode wilayah yang ada di master wilayah."],
+      ["Tanggal", "Isi tanggal yang termasuk pada periode bulanan yang tersedia."],
+      [source === "bps" ? "Nilai BPS" : "Nilai Dinas", "Isi angka untuk variabel yang dipilih."],
+      ...(source === "dinas" ? [["Nama Kelompok / Latitude / Longitude", "Kolom ini opsional."]] : []),
+    ]);
+    instructions["!cols"] = [{ wch: 34 }, { wch: 74 }];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, dataSheet, "Data");
+    XLSX.utils.book_append_sheet(workbook, instructions, "Petunjuk");
+    XLSX.writeFile(workbook, `template_import_${source}.xlsx`);
+  };
 
   const selectFile = async (selectedFile) => {
     setError(""); setNotice(""); setFile(null); setPreview([]);
@@ -96,13 +117,13 @@ export default function OperatorImport() {
           <label className="space-y-2 text-sm font-semibold text-slate-700">Variabel<select required value={variableId} onChange={(event) => setVariableId(event.target.value)} className={inputClass}><option value="">Pilih variabel</option>{variables.map((item) => <option key={item.id} value={item.id}>{item.nama} ({item.satuan || "tanpa satuan"})</option>)}</select></label>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950">
-          <p className="font-bold">Sumber tujuan: {sourceLabel}</p>
+        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950 dark:border-slate-600 dark:bg-slate-800 dark:text-blue-100">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="font-bold">Sumber tujuan: {sourceLabel}</p><button type="button" onClick={downloadTemplate} className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-blue-300 bg-white px-3.5 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-slate-500 dark:bg-slate-700 dark:text-blue-100 dark:hover:bg-slate-600"><Download size={16}/>Unduh template Excel</button></div>
           <p>Impor operator BPS disimpan ke <code>data_bps</code>; instansi selain BPS disimpan ke <code>data_dinas</code>. Sumber ditentukan otomatis dari instansi akun.</p>
           <p className="mt-2">Kolom periode dapat memakai <code>Tanggal</code> atau <code>Tgl Tanam</code>, atau pasangan <code>Tahun</code> dan <code>Bulan</code>. Kolom nilai: <code>{source === "bps" ? "Nilai BPS" : "Nilai Dinas, Nilai, atau Luas"}</code>. Lokasi dapat memakai kode/nama wilayah; jika kosong, wilayah akun digunakan.</p>
         </div>
 
-        <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center transition hover:border-blue-400 hover:bg-blue-50">
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center transition hover:border-blue-400 hover:bg-blue-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:border-blue-400 dark:hover:bg-slate-800">
           <FileSpreadsheet size={30} className="text-emerald-700"/>
           <span className="font-semibold text-slate-800">{file ? file.name : "Pilih file Excel untuk diunggah"}</span>
           <span className="text-xs text-slate-500">Format yang didukung: .xls dan .xlsx</span>

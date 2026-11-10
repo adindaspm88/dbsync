@@ -25,7 +25,7 @@ const masterConfigs = {
 };
 
 const emptyUser = { nama: "", email: "", password: "", role_id: "", instansi_id: "", wilayah_id: "" };
-const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-400";
 
 function optionRows(type, options, form) {
   if (type === "indikator") return options.indikator || [];
@@ -184,7 +184,7 @@ export default function AdminManagement() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-bold text-slate-800">Pengguna</h2><p className="mt-1 text-sm text-slate-600">Tambah akun, ubah role, dan aktifkan atau nonaktifkan akses.</p></div><button type="button" onClick={beginCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"><Plus size={17}/>Tambah pengguna</button></div>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama, email, role, instansi…" className={inputClass}/>
           {formOpen ? (
-            <form onSubmit={saveUser} className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-2">
+            <form onSubmit={saveUser} className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-2 dark:border-slate-600 dark:bg-slate-800">
               <label className="space-y-1.5 text-sm font-semibold text-slate-700">Nama<input required value={form.nama} onChange={(e) => setForm({ ...form, nama: e.target.value })} className={inputClass}/></label>
               <label className="space-y-1.5 text-sm font-semibold text-slate-700">Email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass}/></label>
               <label className="space-y-1.5 text-sm font-semibold text-slate-700">{editing ? "Password baru (opsional)" : "Password"}<input required={!editing} minLength={8} type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className={inputClass} placeholder={editing ? "Kosongkan jika tidak diubah" : "Minimal 8 karakter"}/></label>
@@ -201,7 +201,7 @@ export default function AdminManagement() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-bold text-slate-800">{config.title}</h2><p className="mt-1 text-sm text-slate-600">Tambah dan perbarui data master sistem.</p></div><div className="flex flex-wrap gap-2"><select value={masterName} onChange={(e) => { setMasterName(e.target.value); setEditing(null); setForm({}); setFormOpen(false); }} className={`${inputClass} min-w-48`}>{Object.entries(masterConfigs).map(([key, item]) => <option key={key} value={key}>{item.title}</option>)}</select><button type="button" onClick={beginCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"><Plus size={17}/>Tambah</button></div></div>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari data master…" className={inputClass}/>
           {formOpen ? (
-            <form onSubmit={saveMaster} className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-2">
+            <form onSubmit={saveMaster} className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-2 dark:border-slate-600 dark:bg-slate-800">
               {config.fields.map(([name, label, type, required, choices]) => {
                 if (type === "checkbox") return <label key={name} className="flex items-center gap-3 self-center text-sm font-semibold text-slate-700"><input type="checkbox" checked={Boolean(form[name])} onChange={(e) => setForm({ ...form, [name]: e.target.checked })}/>{label}</label>;
                 if (type === "textarea") return <label key={name} className="space-y-1.5 text-sm font-semibold text-slate-700">{label}<textarea required={required} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value })} className={`${inputClass} min-h-24`} /></label>;
