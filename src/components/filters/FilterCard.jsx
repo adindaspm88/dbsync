@@ -28,35 +28,35 @@ export default function FilterCard({
   return (
     <Card className={`rounded-3xl border border-sky-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 ${compact ? "!p-3 sm:!p-4" : ""}`}>
       {/* HEADER */}
-      {!compact && <div className="flex items-center gap-3">
-        <div className="w-11 h-11 rounded-2xl bg-sky-100 flex items-center justify-center">
+      <div className="flex items-center gap-3">
+        <div className={`flex items-center justify-center rounded-2xl bg-sky-100 ${compact ? "h-9 w-9" : "h-11 w-11"}`}>
           <Filter
-            size={20}
+            size={compact ? 17 : 20}
             className="text-sky-700"
           />
         </div>
 
         <div>
-          <h2 className="font-semibold text-left text-slate-800">
+          <h2 className="text-left font-semibold text-slate-800 dark:text-slate-100">
             Filter Dashboard
           </h2>
 
-          <p className="text-sm text-left text-slate-500">
+          <p className={`text-left text-slate-500 dark:text-slate-400 ${compact ? "hidden" : "text-sm"}`}>
             Pilih variabel, wilayah, dan tahun
           </p>
         </div>
-      </div>}
+      </div>
 
       {/* FILTER */}
       <div
-        className={`grid ${compact ? "gap-3 grid-cols-1 sm:grid-cols-2" : "gap-5 grid-cols-1"} ${
+        className={`grid ${compact ? "grid-cols-1 gap-3" : "grid-cols-1 gap-5"} ${
           showVariable ? "lg:grid-cols-3" : compact ? "" : "lg:grid-cols-2"
         }`}
       >
         {/* VARIABEL */}
         {showVariable && (
         <div>
-          <label className={`flex items-center gap-2 font-medium text-slate-600 mb-2 ${compact ? "text-xs" : "text-sm"}`}>
+          <label className={`mb-2 flex items-center gap-2 font-medium text-slate-600 dark:text-slate-300 ${compact ? "text-xs" : "text-sm"}`}>
             <Database
               size={16}
               className="text-sky-700"
@@ -97,7 +97,7 @@ export default function FilterCard({
 
         {/* WILAYAH */}
         <div>
-          <label className={`flex items-center gap-2 font-medium text-slate-600 mb-2 ${compact ? "text-xs" : "text-sm"}`}>
+          <label className={`mb-2 flex items-center gap-2 font-medium text-slate-600 dark:text-slate-300 ${compact ? "text-xs" : "text-sm"}`}>
             <MapPinned
               size={16}
               className="text-sky-700"
@@ -137,7 +137,7 @@ export default function FilterCard({
 
         {/* TAHUN */}
         <div>
-          <label className={`flex items-center gap-2 font-medium text-slate-600 mb-2 ${compact ? "text-xs" : "text-sm"}`}>
+          <label className={`mb-2 flex items-center gap-2 font-medium text-slate-600 dark:text-slate-300 ${compact ? "text-xs" : "text-sm"}`}>
             <CalendarDays
               size={16}
               className="text-sky-700"

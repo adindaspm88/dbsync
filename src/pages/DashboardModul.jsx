@@ -76,26 +76,28 @@ export default function DashboardModul() {
   return (
     <div className="space-y-5">
       {error && <div role="alert" className="rounded-2xl bg-amber-50 p-4 text-amber-800">{error}</div>}
-      <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3"><div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${tones[theme]}`}><Wheat size={24}/></div><div><h2 className="text-left text-2xl font-bold text-slate-800">{moduleInfo?.nama}</h2><p className="mt-1 text-sm text-slate-500">{moduleInfo?.deskripsi}</p></div></div>
-          <Link to={`/modul/${kodeModul}/luar-lbs`} className="self-start rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">Luas Tanam Luar LBS</Link>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600"><span className="inline-flex items-center gap-2"><CalendarDays size={16}/>{selectedYear || "—"}</span><span className="inline-flex items-center gap-2"><MapPinned size={16}/>{currentRegionName}</span></div>
-      </header>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900 sm:p-6 lg:col-span-3">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3"><div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${tones[theme]}`}><Wheat size={24}/></div><div><h2 className="text-left text-2xl font-bold text-slate-800 dark:text-slate-100">{moduleInfo?.nama}</h2><p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{moduleInfo?.deskripsi}</p></div></div>
+            <Link to={`/modul/${kodeModul}/luar-lbs`} className="self-start rounded-xl bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100">Luas Tanam Luar LBS</Link>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600 dark:text-slate-300"><span className="inline-flex items-center gap-2"><CalendarDays size={16}/>{selectedYear || "—"}</span><span className="inline-flex items-center gap-2"><MapPinned size={16}/>{currentRegionName}</span></div>
+        </header>
 
-      <FilterCard
-        selectedVariable="All"
-        setSelectedVariable={() => {}}
-        selectedRegion={selectedRegion}
-        setSelectedRegion={setSelectedRegion}
-        selectedYear={selectedYear}
-        setSelectedYear={(year) => setSelectedYear(String(year))}
-        regions={regions}
-        years={years}
-        showVariable={false}
-        compact
-      />
+        <FilterCard
+          selectedVariable="All"
+          setSelectedVariable={() => {}}
+          selectedRegion={selectedRegion}
+          setSelectedRegion={setSelectedRegion}
+          selectedYear={selectedYear}
+          setSelectedYear={(year) => setSelectedYear(String(year))}
+          regions={regions}
+          years={years}
+          showVariable={false}
+          compact
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {latestCards.map((row) => <CardProgress key={row.variabel_id} title={row.nama} nilaiBps={row.total_bps} nilaiDinas={row.total_dinas} labelPeriode={row.periode_label} tahun={row.tahun} satuan={row.satuan} color={color} icon={BarChart3} moduleCode={kodeModul}/>)}
