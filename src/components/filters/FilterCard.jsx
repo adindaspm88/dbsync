@@ -22,12 +22,13 @@ export default function FilterCard({
   variables = [],
 
   showVariable = true,
+  compact = false,
 
 }) {
   return (
-    <Card className="rounded-3xl border border-sky-100 shadow-sm bg-white">
+    <Card className={`rounded-3xl border border-sky-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900 ${compact ? "!p-3 sm:!p-4" : ""}`}>
       {/* HEADER */}
-      <div className="flex items-center gap-3">
+      {!compact && <div className="flex items-center gap-3">
         <div className="w-11 h-11 rounded-2xl bg-sky-100 flex items-center justify-center">
           <Filter
             size={20}
@@ -44,20 +45,18 @@ export default function FilterCard({
             Pilih variabel, wilayah, dan tahun
           </p>
         </div>
-      </div>
+      </div>}
 
       {/* FILTER */}
       <div
-        className={`grid gap-5 ${
-          showVariable
-            ? "grid-cols-1 lg:grid-cols-3"
-            : "grid-cols-1 lg:grid-cols-2"
+        className={`grid ${compact ? "gap-3 grid-cols-1 sm:grid-cols-2" : "gap-5 grid-cols-1"} ${
+          showVariable ? "lg:grid-cols-3" : compact ? "" : "lg:grid-cols-2"
         }`}
       >
         {/* VARIABEL */}
         {showVariable && (
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-2">
+          <label className={`flex items-center gap-2 font-medium text-slate-600 mb-2 ${compact ? "text-xs" : "text-sm"}`}>
             <Database
               size={16}
               className="text-sky-700"
@@ -67,9 +66,9 @@ export default function FilterCard({
 
           <select
             className="
-              w-full rounded-2xl border border-sky-100
-              bg-white px-4 py-3 text-sm
-              text-slate-700
+              w-full rounded-xl border border-sky-100
+              bg-white px-3 ${compact ? "py-2 text-xs" : "py-2.5 text-sm"}
+              text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100
               shadow-sm
               focus:border-sky-400
               focus:ring-4 focus:ring-sky-100
@@ -98,7 +97,7 @@ export default function FilterCard({
 
         {/* WILAYAH */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-2">
+          <label className={`flex items-center gap-2 font-medium text-slate-600 mb-2 ${compact ? "text-xs" : "text-sm"}`}>
             <MapPinned
               size={16}
               className="text-sky-700"
@@ -108,9 +107,9 @@ export default function FilterCard({
 
           <select
             className="
-              w-full rounded-2xl border border-sky-100
-              bg-white px-4 py-3 text-sm
-              text-slate-700
+              w-full rounded-xl border border-sky-100
+              bg-white px-3 ${compact ? "py-2 text-xs" : "py-2.5 text-sm"}
+              text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100
               shadow-sm
               focus:border-sky-400
               focus:ring-4 focus:ring-sky-100
@@ -138,7 +137,7 @@ export default function FilterCard({
 
         {/* TAHUN */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-600 mb-2">
+          <label className={`flex items-center gap-2 font-medium text-slate-600 mb-2 ${compact ? "text-xs" : "text-sm"}`}>
             <CalendarDays
               size={16}
               className="text-sky-700"
@@ -148,9 +147,9 @@ export default function FilterCard({
 
           <select
             className="
-              w-full rounded-2xl border border-sky-100
-              bg-white px-4 py-3 text-sm
-              text-slate-700
+              w-full rounded-xl border border-sky-100
+              bg-white px-3 ${compact ? "py-2 text-xs" : "py-2.5 text-sm"}
+              text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100
               shadow-sm
               focus:border-sky-400
               focus:ring-4 focus:ring-sky-100

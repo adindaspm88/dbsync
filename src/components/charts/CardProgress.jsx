@@ -64,10 +64,6 @@ export default function CardProgress({
             {labelPeriode}
           </p>
 
-          <p className="text-[10px] font-semibold text-gray-400 flex items-center justify-end gap-1 group-hover:text-sky-600 transition">
-            DETAIL
-            <ChevronRight size={12} />
-          </p>
         </div>
       </div>
           
@@ -135,6 +131,11 @@ export default function CardProgress({
           />
         </div>
       )}
+
+      <p className="mt-4 flex items-center justify-center gap-1 border-t border-slate-100 pt-3 text-xs font-semibold text-sky-700 transition group-hover:text-sky-900 dark:border-slate-700 dark:text-sky-300 dark:group-hover:text-sky-200">
+        Klik di sini untuk lihat detail
+        <ChevronRight size={14} aria-hidden="true" />
+      </p>
     </div>
   );
 }
