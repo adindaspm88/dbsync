@@ -13,6 +13,7 @@ import {
   Factory,
   BarChart3,
 } from "lucide-react";
+import TablePagination from "./TablePagination";
 
 const icons = {
   pangan: Wheat,
@@ -37,14 +38,6 @@ export default function ComparisonTable({
   const [currentPage, setCurrentPage] =
     useState(1);
   const itemsPerPage = 10;
-  const totalPages = Math.max(
-
-    1,
-
-    Math.ceil(groupedData.length / itemsPerPage)
-
-  );
-
   const paginatedData = groupedData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -54,21 +47,6 @@ export default function ComparisonTable({
     setCurrentPage(1);
 
   }, [groupedData]);
-  const visiblePages = Array.from(
-
-    { length: totalPages },
-
-    (_, i) => i + 1
-
-  ).filter(
-
-    (page) =>
-
-      page >= currentPage - 2 &&
-
-      page <= currentPage + 2
-
-  );
   return (
     <div className="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden">
       {/* HEADER */}
@@ -343,115 +321,7 @@ export default function ComparisonTable({
         </table>
       </div>
 
-      {groupedData.length > 0 && (
-
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-
-          <div className="text-sm text-slate-500">
-
-            Menampilkan{" "}
-
-            {(currentPage - 1) * itemsPerPage + 1}
-
-            {" - "}
-
-            {Math.min(
-
-              currentPage * itemsPerPage,
-
-              groupedData.length
-
-            )}
-
-            {" dari "}
-
-            {groupedData.length} data
-
-          </div>
-
-
-
-          <div className="flex items-center gap-2">
-
-            <button
-
-              onClick={() =>
-
-                setCurrentPage((prev) =>
-
-                  Math.max(prev - 1, 1)
-
-                )
-
-              }
-
-              disabled={currentPage === 1}
-
-              className="px-3 py-2 rounded-xl border border-slate-200 text-sm disabled:opacity-50"
-
-            >
-
-              Sebelumnya
-
-            </button>
-
-
-
-            {visiblePages.map((page) => (
-
-              <button
-
-                key={page}
-
-                onClick={() => setCurrentPage(page)}
-
-              >
-
-                {page}
-
-              </button>
-
-            ))}
-
-
-
-            <button
-
-              onClick={() =>
-
-                setCurrentPage((prev) =>
-
-                  Math.min(
-
-                    prev + 1,
-
-                    totalPages
-
-                  )
-
-                )
-
-              }
-
-              disabled={
-
-                currentPage === totalPages
-
-              }
-
-              className="px-3 py-2 rounded-xl border border-slate-200 text-sm disabled:opacity-50"
-
-            >
-
-              Berikutnya
-
-            </button>
-
-          </div>
-
-        </div>
-
-      )}
+      <TablePagination totalItems={groupedData.length} currentPage={currentPage} pageSize={itemsPerPage} onPageChange={setCurrentPage}/>
 
       {/* EMPTY */}
       {groupedData.length === 0 && (
