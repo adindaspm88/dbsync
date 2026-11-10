@@ -11,10 +11,15 @@ import {
 const formatNumber = (value) =>
   new Intl.NumberFormat("id-ID").format(value);
 
+const hasCoordinates = (item) => item.latitude !== null && item.latitude !== undefined && item.latitude !== ""
+  && item.longitude !== null && item.longitude !== undefined && item.longitude !== ""
+  && Number.isFinite(Number(item.latitude)) && Number.isFinite(Number(item.longitude));
+
 export default function LuarLbsTable({
   data = [],
   onImport,
   onAdd,
+  onViewLocation,
 }) {
   return (
     <div className="bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden">
@@ -124,6 +129,10 @@ export default function LuarLbsTable({
                 Longitude
               </th>
 
+              <th className="bg-emerald-700 text-white px-5 py-4 text-center font-semibold min-w-[160px]">
+                Lihat Lokasi
+              </th>
+
               <th className="bg-emerald-700 text-white px-5 py-4 text-center font-semibold min-w-[180px]">
                 Tanggal Tanam
               </th>
@@ -229,6 +238,22 @@ export default function LuarLbsTable({
                       {item.longitude ?? "—"}
                     </p>
                   </div>
+                </td>
+
+                {/* LIHAT LOKASI */}
+                <td className="px-5 py-5 border-b border-slate-100 bg-white text-center align-top">
+                  {hasCoordinates(item) ? (
+                    <button
+                      type="button"
+                      onClick={() => onViewLocation?.(item)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                    >
+                      <MapPinned size={15} />
+                      Lihat lokasi
+                    </button>
+                  ) : (
+                    <span className="text-slate-400">Koordinat kosong</span>
+                  )}
                 </td>
 
                 {/* TANGGAL TANAM */}
