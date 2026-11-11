@@ -53,8 +53,8 @@ export default function MapLocationModal({ item, onClose }) {
     loadLeaflet().then((L) => {
       if (!active || !mapElement.current) return;
       map = L.map(mapElement.current, { scrollWheelZoom: true, zoomControl: true });
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      L.tileLayer("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+        attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community',
         maxZoom: 19,
       }).addTo(map);
 
@@ -125,7 +125,7 @@ export default function MapLocationModal({ item, onClose }) {
             {mapError && <div role="alert" className="absolute inset-x-4 bottom-4 rounded-xl bg-white/95 p-3 text-sm text-red-700 shadow dark:bg-slate-900/95 dark:text-red-300">{mapError}</div>}
           </>}
         </div>
-        <p className="px-5 py-3 text-xs text-slate-500 dark:text-slate-400">Lingkaran menunjukkan perkiraan luasan dalam bentuk area lingkaran berdasarkan nilai hektare; peta menyesuaikan zoom agar seluruh area terlihat.</p>
+        <p className="px-5 py-3 text-xs text-slate-500 dark:text-slate-400">Citra satelit Esri. Lingkaran menunjukkan perkiraan luasan berdasarkan nilai hektare, bukan batas sawah terverifikasi; peta menyesuaikan zoom agar seluruh area terlihat.</p>
       </section>
     </div>
   );
