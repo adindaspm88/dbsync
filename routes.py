@@ -93,7 +93,7 @@ def current_user(user=Depends(get_current_user)):
 
 
 @router.get("/modules")
-def list_modules(db=Depends(get_db)):
+def list_modules(db=Depends(get_db), user=Depends(get_current_user)):
     return db.execute(text("""
         SELECT m.id, m.kode, m.nama, m.deskripsi, m.indikator_id,
                i.kode AS kode_indikator, i.nama AS nama_indikator
@@ -103,7 +103,7 @@ def list_modules(db=Depends(get_db)):
 
 
 @router.get("/modules/{kode}/variables")
-def module_variables(kode: str, db=Depends(get_db)):
+def module_variables(kode: str, db=Depends(get_db), user=Depends(get_current_user)):
     rows = db.execute(text("""
         SELECT v.id, v.modul_id, v.kode, v.nama, v.satuan, v.deskripsi
         FROM master_variabel v JOIN master_modul m ON m.id = v.modul_id
@@ -113,7 +113,7 @@ def module_variables(kode: str, db=Depends(get_db)):
 
 
 @router.get("/modules/{kode}/dashboard")
-def module_dashboard(kode: str, tahun: int | None = None, wilayah_id: int | None = None, db=Depends(get_db)):
+def module_dashboard(kode: str, tahun: int | None = None, wilayah_id: int | None = None, db=Depends(get_db), user=Depends(get_current_user)):
     return db.execute(text("""
         WITH bps_aggregate AS (
             SELECT b.variabel_id,b.periode_id,SUM(b.nilai) AS total_bps
@@ -156,7 +156,7 @@ def module_dashboard(kode: str, tahun: int | None = None, wilayah_id: int | None
 
 
 @router.get("/lookups")
-def lookups(db=Depends(get_db)):
+def lookups(db=Depends(get_db), user=Depends(get_current_user)):
     return {
         "wilayahs": db.execute(text("SELECT id, kode_wilayah, nama_wilayah, level_wilayah, parent_id FROM master_wilayah ORDER BY id")).mappings().all(),
         "periodes": db.execute(text("SELECT id, tahun, jenis_periode, nomor_periode, periode_label FROM master_periode WHERE is_active = 1 ORDER BY tahun, id")).mappings().all(),
@@ -164,7 +164,7 @@ def lookups(db=Depends(get_db)):
 
 
 @router.get("/modules/{kode}/comparison")
-def module_comparison(kode: str, tahun: int | None = None, db=Depends(get_db)):
+def module_comparison(kode: str, tahun: int | None = None, db=Depends(get_db), user=Depends(get_current_user)):
     return db.execute(text("""
         SELECT v.id AS variabel_id, v.kode AS kode_variabel, v.nama AS nama_variabel,
                v.satuan, w.id AS wilayah_id, w.kode_wilayah AS kode_kabupaten,
@@ -247,7 +247,7 @@ def save_luar_lbs(payload: LuarLbsValue, db=Depends(get_db), user=Depends(get_cu
 
 
 @router.get("/modules/{kode}/luar-lbs")
-def luar_lbs(kode: str, tahun: int | None = None, db=Depends(get_db)):
+def luar_lbs(kode: str, tahun: int | None = None, db=Depends(get_db), user=Depends(get_current_user)):
     return db.execute(text("""
         SELECT d.id, w.nama_wilayah AS wilayah_name, w.nama_wilayah, w.kode_wilayah, w.parent_id,
                parent.nama_wilayah AS kecamatan, d.nilai AS nilai_dinas,
@@ -540,7 +540,7 @@ def admin_update_master(master_name: str, record_id: int, payload: dict = Body(.
 
 
 @router.get("/dashboard/cards")
-def cards(tahun: int, db=Depends(get_db)):
+def cards(tahun: int, db=Depends(get_db), user=Depends(get_current_user)):
 
     sql = text("""
         SELECT
@@ -611,7 +611,8 @@ def chart(
     wilayah_id: int,
     tahun: int,
     variabel_id: int,
-    db=Depends(get_db)
+    db=Depends(get_db),
+    user=Depends(get_current_user),
 ):
 
     sql = textsql = text("""
@@ -691,7 +692,7 @@ def chart(
     }
 
 @router.get("/recon")
-def recon(variabel_id: int, periode_id: int, db=Depends(get_db)):
+def recon(variabel_id: int, periode_id: int, db=Depends(get_db), user=Depends(get_current_user)):
 
     sql = text("""
         SELECT
