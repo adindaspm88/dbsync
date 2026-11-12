@@ -55,7 +55,8 @@ export default function MapLocationModal({ item, onClose }) {
       map = L.map(mapElement.current, { scrollWheelZoom: true, zoomControl: true });
       L.tileLayer("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
         attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>, Maxar, Earthstar Geographics, and the GIS User Community',
-        maxZoom: 19,
+        maxNativeZoom: 17,
+        maxZoom: 17,
       }).addTo(map);
 
       const center = [latitude, longitude];
