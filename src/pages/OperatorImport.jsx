@@ -61,15 +61,15 @@ export default function OperatorImport() {
       ? ["Kode Wilayah", "Tanggal", "Nilai BPS"]
       : ["Kode Wilayah", "Tanggal", "Nilai Dinas", "Nama Kelompok", "Latitude", "Longitude"];
     const exampleRow = source === "bps"
-      ? ["3201", "2025-01-01", 1250]
-      : ["3201", "2025-01-01", 1310, "Kelompok Tani Contoh", -6.5971, 106.806];
+      ? ["3201", "Juni 2026", 1250]
+      : ["3201", "Juni 2026", 1310, "Kelompok Tani Contoh", -6.5971, 106.806];
     const dataSheet = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
     dataSheet["!cols"] = headers.map((header) => ({ wch: Math.max(18, header.length + 4) }));
     const instructions = XLSX.utils.aoa_to_sheet([
       ["Petunjuk pengisian template"],
       ["Baris contoh", "Baris kedua pada sheet Data hanya contoh. Ganti dengan data Anda atau hapus sebelum import."],
       ["Kode Wilayah", "Isi dengan kode wilayah yang ada di master wilayah."],
-      ["Tanggal", "Isi tanggal yang termasuk pada periode bulanan yang tersedia."],
+      ["Tanggal", "Isi tanggal atau nama periode bulanan lengkap, misalnya Juni 2026 atau 2026 Juni. Format Tahun-Bulan juga dapat memakai kolom terpisah."],
       [source === "bps" ? "Nilai BPS" : "Nilai Dinas", "Isi angka untuk variabel yang dipilih."],
       ...(source === "dinas" ? [["Nama Kelompok / Latitude / Longitude", "Kolom ini opsional."]] : []),
     ]);
@@ -131,7 +131,7 @@ export default function OperatorImport() {
         <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-950 dark:border-slate-600 dark:bg-slate-800 dark:text-blue-100">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><p className="font-bold">Sumber tujuan: {sourceLabel}</p><button type="button" onClick={downloadTemplate} className="inline-flex items-center justify-center gap-2 self-start rounded-xl border border-blue-300 bg-white px-3.5 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 dark:border-slate-500 dark:bg-slate-700 dark:text-blue-100 dark:hover:bg-slate-600"><Download size={16}/>Unduh template Excel</button></div>
           <p>Impor operator BPS disimpan ke <code>data_bps</code>; instansi selain BPS disimpan ke <code>data_dinas</code>. Sumber ditentukan otomatis dari instansi akun.</p>
-          <p className="mt-2">Kolom periode dapat memakai <code>Tanggal</code> atau <code>Tgl Tanam</code>, atau pasangan <code>Tahun</code> dan <code>Bulan</code>. Kolom nilai: <code>{source === "bps" ? "Nilai BPS" : "Nilai Dinas, Nilai, atau Luas"}</code>. Lokasi dapat memakai kode/nama wilayah; jika kosong, wilayah akun digunakan.</p>
+          <p className="mt-2">Kolom periode dapat memakai <code>Tanggal</code> atau <code>Tgl Tanam</code> dengan format tanggal atau nama bulan lengkap seperti <code>Juni 2026</code>/<code>2026 Juni</code>, atau pasangan <code>Tahun</code> dan <code>Bulan</code> (angka atau nama bulan). Kolom nilai: <code>{source === "bps" ? "Nilai BPS" : "Nilai Dinas, Nilai, atau Luas"}</code>. Lokasi dapat memakai kode/nama wilayah; jika kosong, wilayah akun digunakan.</p>
         </div>
 
         <label className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 px-5 py-10 text-center transition hover:border-blue-400 hover:bg-blue-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:border-blue-400 dark:hover:bg-slate-800">
