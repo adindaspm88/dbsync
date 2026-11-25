@@ -3,6 +3,8 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 import io
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from db import get_db
 from deps import get_current_user, require_roles
@@ -335,7 +337,44 @@ MASTER_CONFIG = {
         "fields": ("kode_wilayah", "nama_wilayah", "level_wilayah", "parent_id"),
         "required": ("kode_wilayah", "nama_wilayah", "level_wilayah"), "active": False,
     },
+    "periode": {
+        "table": "master_periode",
+        "fields": ("tahun", "jenis_periode", "nomor_periode", "periode_label", "is_active"),
+        "required": ("tahun", "jenis_periode", "nomor_periode", "periode_label"), "active": True,
+    },
 }
+
+PERIOD_MAX_NUMBER = {"bulanan": 12, "triwulanan": 4, "semester": 2, "tahun": 1}
+PERIOD_MONTHS = ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
+
+
+def validate_master_period(payload, db, exclude_id=None):
+    try:
+        year = int(payload.get("tahun"))
+        number = int(payload.get("nomor_periode"))
+    except (TypeError, ValueError):
+        raise HTTPException(422, "Tahun dan nomor periode harus berupa angka bulat.")
+
+    period_type = str(payload.get("jenis_periode") or "")
+    label = str(payload.get("periode_label") or "").strip()
+    if year < 1901 or year > 2155:
+        raise HTTPException(422, "Tahun periode harus berada antara 1901 dan 2155.")
+    if period_type not in PERIOD_MAX_NUMBER:
+        raise HTTPException(422, "Jenis periode tidak valid.")
+    if number < 1 or number > PERIOD_MAX_NUMBER[period_type]:
+        raise HTTPException(422, f"Nomor untuk periode {period_type} harus antara 1 dan {PERIOD_MAX_NUMBER[period_type]}.")
+    if not label or len(label) > 50:
+        raise HTTPException(422, "Label periode wajib diisi dan maksimal 50 karakter.")
+
+    duplicate_sql = "SELECT id FROM master_periode WHERE tahun=:tahun AND jenis_periode=:jenis AND nomor_periode=:nomor"
+    params = {"tahun": year, "jenis": period_type, "nomor": number}
+    if exclude_id is not None:
+        duplicate_sql += " AND id<>:exclude_id"
+        params["exclude_id"] = exclude_id
+    if db.execute(text(duplicate_sql + " LIMIT 1"), params).scalar():
+        raise HTTPException(409, "Periode dengan tahun, jenis, dan nomor tersebut sudah ada.")
+
+    return {"tahun": year, "jenis_periode": period_type, "nomor_periode": number, "periode_label": label}
 
 
 def get_admin_wilayah_scope(user, db):
@@ -499,6 +538,9 @@ def admin_create_master(master_name: str, payload: dict = Body(...), db=Depends(
     missing = [field for field in config["required"] if field not in payload or payload[field] in (None, "")]
     if missing:
         raise HTTPException(422, f"Kolom wajib diisi: {', '.join(missing)}")
+    if master_name == "periode":
+        payload = {**payload, **validate_master_period(payload, db)}
+        fields = [field for field in config["fields"] if field in payload]
     params = {field: payload[field] for field in fields}
     columns = ",".join(fields)
     values = ",".join(f":{field}" for field in fields)
@@ -523,6 +565,13 @@ def admin_update_master(master_name: str, record_id: int, payload: dict = Body(.
     fields = [field for field in config["fields"] if field in payload]
     if not fields:
         raise HTTPException(422, "Tidak ada kolom yang diperbarui.")
+    if master_name == "periode":
+        existing = db.execute(text("SELECT * FROM master_periode WHERE id=:id"), {"id": record_id}).mappings().first()
+        if not existing:
+            raise HTTPException(404, "Data master tidak ditemukan.")
+        merged = {**dict(existing), **payload}
+        validated = validate_master_period(merged, db, exclude_id=record_id)
+        payload = {**payload, **{field: validated[field] for field in fields if field in validated}}
     params = {field: payload[field] for field in fields}
     params["id"] = record_id
     updates = ",".join(f"{field}=:{field}" for field in fields)
@@ -537,6 +586,46 @@ def admin_update_master(master_name: str, record_id: int, payload: dict = Body(.
     except IntegrityError as error:
         db.rollback()
         raise HTTPException(409, "Kode sudah digunakan atau relasi induk tidak valid.") from error
+
+
+@router.post("/admin/masters/periode/generate")
+def admin_generate_periods(db=Depends(get_db), user=Depends(get_current_user)):
+    require_roles(user, ["Super Admin"])
+    current_year = datetime.now(ZoneInfo("Asia/Jakarta")).year
+    first_year = db.execute(text("SELECT MIN(tahun) FROM master_periode")).scalar()
+    first_year = min(int(first_year), current_year) if first_year is not None else current_year
+    existing = db.execute(text(
+        "SELECT tahun, jenis_periode, nomor_periode FROM master_periode WHERE tahun BETWEEN :start AND :end"
+    ), {"start": first_year, "end": current_year}).all()
+    existing_keys = {(int(row[0]), str(row[1]), int(row[2])) for row in existing}
+    insert_sql = text("""
+        INSERT INTO master_periode (tahun, jenis_periode, nomor_periode, periode_label, is_active)
+        VALUES (:tahun, :jenis, :nomor, :label, 1)
+    """)
+    created = 0
+    total = 0
+    for year in range(first_year, current_year + 1):
+        labels = {
+            "bulanan": PERIOD_MONTHS,
+            "triwulanan": tuple(f"Triwulan {number}" for number in range(1, 5)),
+            "semester": ("Semester 1", "Semester 2"),
+            "tahun": (f"Tahun {year}",),
+        }
+        for kind, kind_labels in labels.items():
+            for number, period_name in enumerate(kind_labels, start=1):
+                total += 1
+                key = (year, kind, number)
+                if key in existing_keys:
+                    continue
+                db.execute(insert_sql, {"tahun": year, "jenis": kind, "nomor": number, "label": f"{period_name} {year}" if kind != "tahun" else period_name})
+                created += 1
+    db.commit()
+    existing_count = total - created
+    if created:
+        message = f"Berhasil membuat {created} periode yang belum ada untuk tahun {first_year}–{current_year}. {existing_count} periode yang sudah tersedia dilewati."
+    else:
+        message = f"Semua periode untuk tahun {first_year}–{current_year} sudah tersedia. Tidak ada data baru yang dibuat."
+    return {"message": message, "created": created, "existing": existing_count, "from_year": first_year, "through_year": current_year}
 
 
 @router.get("/dashboard/cards")
