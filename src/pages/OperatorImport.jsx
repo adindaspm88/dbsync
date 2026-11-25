@@ -60,10 +60,14 @@ export default function OperatorImport() {
     const headers = source === "bps"
       ? ["Kode Wilayah", "Tanggal", "Nilai BPS"]
       : ["Kode Wilayah", "Tanggal", "Nilai Dinas", "Nama Kelompok", "Latitude", "Longitude"];
-    const dataSheet = XLSX.utils.aoa_to_sheet([headers]);
+    const exampleRow = source === "bps"
+      ? ["3201", "2025-01-01", 1250]
+      : ["3201", "2025-01-01", 1310, "Kelompok Tani Contoh", -6.5971, 106.806];
+    const dataSheet = XLSX.utils.aoa_to_sheet([headers, exampleRow]);
     dataSheet["!cols"] = headers.map((header) => ({ wch: Math.max(18, header.length + 4) }));
     const instructions = XLSX.utils.aoa_to_sheet([
       ["Petunjuk pengisian template"],
+      ["Baris contoh", "Baris kedua pada sheet Data hanya contoh. Ganti dengan data Anda atau hapus sebelum import."],
       ["Kode Wilayah", "Isi dengan kode wilayah yang ada di master wilayah."],
       ["Tanggal", "Isi tanggal yang termasuk pada periode bulanan yang tersedia."],
       [source === "bps" ? "Nilai BPS" : "Nilai Dinas", "Isi angka untuk variabel yang dipilih."],
