@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 import pandas as pd
 import io
+import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -346,6 +347,7 @@ MASTER_CONFIG = {
 
 PERIOD_MAX_NUMBER = {"bulanan": 12, "triwulanan": 4, "semester": 2, "tahun": 1}
 PERIOD_MONTHS = ("Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember")
+PERIOD_MONTH_NUMBERS = {name.casefold(): number for number, name in enumerate(PERIOD_MONTHS, start=1)}
 
 
 def validate_master_period(payload, db, exclude_id=None):
@@ -921,16 +923,30 @@ def import_data(
             continue
 
         raw_date = row_value(row, "Tanggal", "Tgl Tanam", "Tanggal Data", "Periode")
-        dt = pd.to_datetime(raw_date, errors="coerce") if raw_date is not None else pd.NaT
-        if pd.isna(dt):
-            year = pd.to_numeric(row_value(row, "Tahun", "tahun"), errors="coerce")
-            month = pd.to_numeric(row_value(row, "Bulan", "bulan", "Nomor Periode"), errors="coerce")
-            if pd.isna(year) or pd.isna(month):
-                record_skip(excel_row, "Tanggal/periode kosong atau tidak dapat dibaca. Isi Tanggal atau pasangan Tahun dan Bulan.")
-                continue
-            year, month = int(year), int(month)
+        date_period = None
+        if raw_date is not None:
+            parts = str(raw_date).strip().split()
+            if len(parts) == 2:
+                year_part = next((part for part in parts if re.fullmatch(r"\d{4}", part)), None)
+                month_part = next((part for part in parts if not re.fullmatch(r"\d{4}", part)), "").casefold()
+                if year_part and month_part in PERIOD_MONTH_NUMBERS:
+                    date_period = (int(year_part), PERIOD_MONTH_NUMBERS[month_part])
+        if date_period:
+            year, month = date_period
         else:
-            year, month = int(dt.year), int(dt.month)
+            dt = pd.to_datetime(raw_date, errors="coerce") if raw_date is not None else pd.NaT
+            if pd.isna(dt):
+                year = pd.to_numeric(row_value(row, "Tahun", "tahun"), errors="coerce")
+                raw_month = row_value(row, "Bulan", "bulan", "Nomor Periode")
+                month = pd.to_numeric(raw_month, errors="coerce")
+                if pd.isna(month) and raw_month is not None:
+                    month = PERIOD_MONTH_NUMBERS.get(str(raw_month).strip().casefold(), float("nan"))
+                if pd.isna(year) or pd.isna(month):
+                    record_skip(excel_row, "Tanggal/periode kosong atau tidak dapat dibaca. Isi Tanggal (misalnya Juni 2026 atau 2026 Juni) atau pasangan Tahun dan Bulan.")
+                    continue
+                year, month = int(year), int(month)
+            else:
+                year, month = int(dt.year), int(dt.month)
         period_id = period_map.get((year, month))
         value_keys = ("Nilai BPS", "Nilai", "Luas", "nilai") if sumber == "bps" else ("Nilai Dinas", "Luas", "Nilai", "nilai", "Nilai BPS")
         value = pd.to_numeric(row_value(row, *value_keys), errors="coerce")
