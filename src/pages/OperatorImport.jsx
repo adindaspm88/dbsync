@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { AlertCircle, CheckCircle2, Download, FileSpreadsheet, Upload } from "lucide-react";
+import { AlertCircle, Download, FileSpreadsheet, Upload } from "lucide-react";
 import * as XLSX from "xlsx";
 import { getCurrentUser } from "../services/adminService";
 import { getModules, getModuleVariables } from "../services/dashboardService";
 import { importData } from "../services/importService";
 import { parseExcelFile } from "../utils/excelParser";
 import TablePagination from "../components/tables/TablePagination";
+import ImportResultSummary from "../components/import/ImportResultSummary";
 
 const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100";
 
@@ -22,7 +23,7 @@ export default function OperatorImport() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [importResult, setImportResult] = useState(null);
   const previewPageSize = 10;
   const paginatedPreview = preview.slice((previewPage - 1) * previewPageSize, previewPage * previewPageSize);
 
@@ -76,7 +77,7 @@ export default function OperatorImport() {
   };
 
   const selectFile = async (selectedFile) => {
-    setError(""); setNotice(""); setFile(null); setPreview([]);
+    setError(""); setImportResult(null); setFile(null); setPreview([]);
     if (!selectedFile) return;
     if (!/\.xlsx?$/i.test(selectedFile.name)) {
       setError("Pilih file Excel dengan format .xls atau .xlsx.");
@@ -98,10 +99,10 @@ export default function OperatorImport() {
       setError("Pilih variabel dan file Excel terlebih dahulu.");
       return;
     }
-    setBusy(true); setError(""); setNotice("");
+    setBusy(true); setError(""); setImportResult(null);
     try {
       const result = await importData(file, source, variableId);
-      setNotice(result.message || "Impor data berhasil.");
+      setImportResult(result);
       setFile(null); setPreview([]);
     } catch (requestError) {
       setError(requestError.response?.data?.detail || "Impor gagal. Periksa struktur kolom file Excel.");
@@ -115,7 +116,7 @@ export default function OperatorImport() {
       </header>
 
       {error && <div role="alert" className="flex items-start gap-2 rounded-2xl border border-rose-300 bg-rose-50 p-4 text-sm text-rose-800"><AlertCircle size={18}/>{error}</div>}
-      {notice && <div role="status" className="flex items-start gap-2 rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-emerald-800"><CheckCircle2 size={18}/>{notice}</div>}
+      <ImportResultSummary result={importResult} onDismiss={() => setImportResult(null)}/>
 
       <form onSubmit={submit} className="space-y-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="grid gap-5 md:grid-cols-2">
