@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Database, Pencil, Plus, ShieldCheck, Users, X } from "lucide-react";
+import { ArrowLeft, CalendarDays, Database, Pencil, Plus, ShieldCheck, Users, X } from "lucide-react";
 import TablePagination from "../components/tables/TablePagination";
 import {
   createAdminUser, createMasterRow, getAdminOptions, getAdminUsers,
-  getCurrentUser, getMasterRows, setAdminUserActive, updateAdminUser, updateMasterRow,
+  generateAdminPeriods, getCurrentUser, getMasterRows, setAdminUserActive, updateAdminUser, updateMasterRow,
 } from "../services/adminService";
 
 const masterConfigs = {
@@ -22,6 +22,9 @@ const masterConfigs = {
   ] },
   wilayah: { title: "Master Wilayah", columns: ["kode_wilayah", "nama_wilayah", "level_wilayah", "parent_id"], fields: [
     ["kode_wilayah", "Kode wilayah", "text", true], ["nama_wilayah", "Nama wilayah", "text", true], ["level_wilayah", "Tingkat wilayah", "select", true, [["provinsi", "Provinsi"], ["kabkot", "Kabupaten/Kota"], ["kecamatan", "Kecamatan"], ["deskel", "Desa/Kelurahan"]]], ["parent_id", "Wilayah induk", "wilayah_parent"],
+  ] },
+  periode: { title: "Master Periode", columns: ["tahun", "jenis_periode", "nomor_periode", "periode_label", "is_active"], fields: [
+    ["tahun", "Tahun", "number", true], ["jenis_periode", "Jenis periode", "select", true, [["bulanan", "Bulanan"], ["triwulanan", "Triwulanan"], ["semester", "Semester"], ["tahun", "Tahunan"]]], ["nomor_periode", "Nomor periode", "number", true], ["periode_label", "Label periode", "text", true], ["is_active", "Status aktif", "checkbox"],
   ] },
 };
 
@@ -63,6 +66,7 @@ export default function AdminManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [generatingPeriods, setGeneratingPeriods] = useState(false);
 
   const loadUsers = async () => setUsers(await getAdminUsers());
   const loadMaster = async (name = masterName) => setMasterRows(await getMasterRows(name));
@@ -154,12 +158,26 @@ export default function AdminManagement() {
 
   const saveMaster = async (event) => {
     event.preventDefault(); setError(""); setNotice("");
-    const payload = Object.fromEntries(config.fields.map(([name, , type]) => [name, type === "checkbox" ? Number(Boolean(form[name])) : ["indikator", "modul", "wilayah_instansi", "wilayah_parent"].includes(type) || ["modul_id", "indikator_id", "wilayah_id", "parent_id"].includes(name) ? (form[name] ? Number(form[name]) : null) : form[name]]).filter(([name]) => name in form));
+    const payload = Object.fromEntries(config.fields.map(([name, , type]) => [name, type === "checkbox" ? Number(Boolean(form[name])) : type === "number" ? (form[name] === "" || form[name] == null ? null : Number(form[name])) : ["indikator", "modul", "wilayah_instansi", "wilayah_parent"].includes(type) || ["modul_id", "indikator_id", "wilayah_id", "parent_id"].includes(name) ? (form[name] ? Number(form[name]) : null) : form[name]]).filter(([name]) => name in form));
     try {
       if (editing) await updateMasterRow(masterName, editing, payload);
       else await createMasterRow(masterName, payload);
       await loadMaster(); setEditing(null); setFormOpen(false); setNotice(editing ? "Data master diperbarui." : "Data master ditambahkan.");
     } catch (requestError) { setError(requestError.response?.data?.detail || "Data master gagal disimpan."); }
+  };
+
+  const generatePeriods = async () => {
+    setError(""); setNotice(""); setGeneratingPeriods(true);
+    try {
+      const result = await generateAdminPeriods();
+      await loadMaster("periode");
+      setMasterPage(1);
+      setNotice(result.message || "Periode yang belum ada berhasil dibuat sampai tahun ini.");
+    } catch (requestError) {
+      setError(requestError.response?.data?.detail || "Periode gagal dibuat.");
+    } finally {
+      setGeneratingPeriods(false);
+    }
   };
 
   const toggleUser = async (user) => {
@@ -208,7 +226,7 @@ export default function AdminManagement() {
         </section>
       ) : (
         <section className="space-y-5 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-bold text-slate-800">{config.title}</h2><p className="mt-1 text-sm text-slate-600">Tambah dan perbarui data master sistem.</p></div><div className="flex flex-wrap gap-2"><select value={masterName} onChange={(e) => { setMasterName(e.target.value); setEditing(null); setForm({}); setFormOpen(false); }} className={`${inputClass} min-w-48`}>{Object.entries(masterConfigs).map(([key, item]) => <option key={key} value={key}>{item.title}</option>)}</select><button type="button" onClick={beginCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"><Plus size={17}/>Tambah</button></div></div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-bold text-slate-800">{config.title}</h2><p className="mt-1 text-sm text-slate-600">Tambah dan perbarui data master sistem.</p></div><div className="flex flex-wrap gap-2"><select value={masterName} onChange={(e) => { setMasterName(e.target.value); setEditing(null); setForm({}); setFormOpen(false); }} className={`${inputClass} min-w-48`}>{Object.entries(masterConfigs).map(([key, item]) => <option key={key} value={key}>{item.title}</option>)}</select>{masterName === "periode" && <button type="button" onClick={generatePeriods} disabled={generatingPeriods || loading} className="inline-flex items-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60 dark:border-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:bg-emerald-900/50"><CalendarDays size={17}/>{generatingPeriods ? "Membuat periode…" : "Generate sampai tahun ini"}</button>}<button type="button" onClick={beginCreate} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800"><Plus size={17}/>Tambah</button></div></div>
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari data master…" className={inputClass}/>
           {formOpen ? (
             <form onSubmit={saveMaster} className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-2 dark:border-slate-600 dark:bg-slate-800">
@@ -217,13 +235,15 @@ export default function AdminManagement() {
                 if (type === "textarea") return <label key={name} className="space-y-1.5 text-sm font-semibold text-slate-700">{label}<textarea required={required} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value })} className={`${inputClass} min-h-24`} /></label>;
                 const opts = choices || (type === "select" ? [] : fieldOptions(type, options, form));
                 const select = ["select", "indikator", "modul", "wilayah_instansi", "wilayah_parent"].includes(type);
-                return <label key={name} className="space-y-1.5 text-sm font-semibold text-slate-700">{label}{select ? <select required={required} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value, ...(name === "level_wilayah" ? { parent_id: "" } : {}) })} className={inputClass}><option value="">{type === "wilayah_parent" ? "Tanpa induk" : `Pilih ${label.toLowerCase()}`}</option>{opts.map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select> : <input required={required} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value })} className={inputClass}/>}</label>;
+                const maxPeriodNumber = { bulanan: 12, triwulanan: 4, semester: 2, tahun: 1 }[form.jenis_periode];
+                return <label key={name} className="space-y-1.5 text-sm font-semibold text-slate-700">{label}{select ? <select required={required} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value, ...(name === "level_wilayah" ? { parent_id: "" } : {}) })} className={inputClass}><option value="">{type === "wilayah_parent" ? "Tanpa induk" : `Pilih ${label.toLowerCase()}`}</option>{opts.map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select> : <input required={required} type={type === "number" ? "number" : "text"} min={type === "number" ? (name === "tahun" ? 1901 : 1) : undefined} max={name === "tahun" ? 2155 : name === "nomor_periode" ? maxPeriodNumber : undefined} step={type === "number" ? 1 : undefined} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value })} className={inputClass}/>}</label>;
               })}
               <div className="flex gap-3 md:col-span-2"><button className="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white">{editing ? "Simpan perubahan" : "Simpan master"}</button><button type="button" onClick={() => { setEditing(null); setForm({}); setFormOpen(false); }} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700"><X size={16}/>Batal</button></div>
             </form>
           ) : null}
           <div className="max-h-[65vh] overflow-auto rounded-2xl border border-slate-200"><table className="min-w-full text-left text-sm"><thead className="sticky top-0 z-10 bg-slate-100 text-slate-700"><tr>{config.columns.map((column) => <th key={column} className="whitespace-nowrap px-4 py-3 font-semibold">{column.replaceAll("_", " ")}</th>)}<th className="px-4 py-3 font-semibold">Aksi</th></tr></thead><tbody>{paginatedMasters.map((row) => <tr key={row.id} className="border-t border-slate-100">{config.columns.map((column) => <td key={column} className="max-w-sm px-4 py-3 text-slate-700">{column === "is_active" ? <span className={row[column] ? "text-emerald-700" : "text-slate-500"}>{row[column] ? "Aktif" : "Nonaktif"}</span> : String(row[column] ?? "—")}</td>)}<td className="whitespace-nowrap px-4 py-3"><button type="button" onClick={() => beginMasterEdit(row)} aria-label="Edit master" className="rounded-lg p-2 text-blue-700 hover:bg-blue-50"><Pencil size={16}/></button>{config.fields.some(([name]) => name === "is_active") && <button type="button" onClick={() => toggleMaster(row)} className="ml-1 rounded-lg px-2 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">{row.is_active ? "Nonaktifkan" : "Aktifkan"}</button>}</td></tr>)}</tbody></table>{visibleMasters.length === 0 && <p className="p-8 text-center text-sm text-slate-500">Tidak ada data master.</p>}</div><TablePagination totalItems={visibleMasters.length} currentPage={masterPage} pageSize={pageSize} onPageChange={setMasterPage}/>
           {masterName === "wilayah" && <p className="text-xs text-slate-500">Master wilayah tidak menyediakan kolom status aktif. Data hanya dapat ditambah dan diedit agar relasi wilayah dan data historis tetap terjaga.</p>}
+          {masterName === "periode" && <p className="text-xs text-slate-500 dark:text-slate-400">Nomor periode: bulanan 1–12, triwulanan 1–4, semester 1–2, tahunan 1. Tombol generate melengkapi periode yang belum ada, mulai dari tahun periode paling awal sampai tahun ini.</p>}
         </section>
       )}
     </div>

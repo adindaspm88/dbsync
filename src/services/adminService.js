@@ -9,3 +9,4 @@ export const setAdminUserActive = async (id, is_active) => (await api.patch(`/ad
 export const getMasterRows = async (master) => (await api.get(`/admin/masters/${master}`)).data;
 export const createMasterRow = async (master, payload) => (await api.post(`/admin/masters/${master}`, payload)).data;
 export const updateMasterRow = async (master, id, payload) => (await api.put(`/admin/masters/${master}/${id}`, payload)).data;
+export const generateAdminPeriods = async () => (await api.post("/admin/masters/periode/generate")).data;
