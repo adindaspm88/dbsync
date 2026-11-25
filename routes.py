@@ -795,8 +795,16 @@ def import_data(
         return False
 
     count = 0
-    skipped = 0
-    for row in df.to_dict("records"):
+    skipped_by_reason = defaultdict(int)
+    skipped_rows = []
+    max_skipped_details = 200
+
+    def record_skip(excel_row, reason):
+        skipped_by_reason[reason] += 1
+        if len(skipped_rows) < max_skipped_details:
+            skipped_rows.append({"row": excel_row, "reason": reason})
+
+    for excel_row, row in enumerate(df.to_dict("records"), start=2):
         raw_location = row_value(row, "Kode Wilayah", "Kode Kabupaten", "Kode Desa", "Kode Kecamatan", "Wilayah ID", "Desa", "Kota/Kabupaten", "Kecamatan", "Wilayah")
         region = None
         if raw_location is not None:
@@ -811,7 +819,7 @@ def import_data(
                 elif wilayah_scope:
                     region = next((match for match in matches if is_in_scope(match["id"])), None)
             if region is None:
-                skipped += 1
+                record_skip(excel_row, f"Wilayah '{location}' tidak ditemukan atau namanya tidak unik.")
                 continue
         if region is None and wilayah_scope:
             region_id = wilayah_scope
@@ -820,7 +828,7 @@ def import_data(
         else:
             region_id = db.execute(text("SELECT id FROM master_wilayah WHERE level_wilayah='provinsi' LIMIT 1")).scalar()
         if not region_id or not is_in_scope(region_id):
-            skipped += 1
+            record_skip(excel_row, f"Wilayah '{raw_location or region_id}' berada di luar cakupan akun Anda.")
             continue
 
         raw_date = row_value(row, "Tanggal", "Tgl Tanam", "Tanggal Data", "Periode")
@@ -829,7 +837,7 @@ def import_data(
             year = pd.to_numeric(row_value(row, "Tahun", "tahun"), errors="coerce")
             month = pd.to_numeric(row_value(row, "Bulan", "bulan", "Nomor Periode"), errors="coerce")
             if pd.isna(year) or pd.isna(month):
-                skipped += 1
+                record_skip(excel_row, "Tanggal/periode kosong atau tidak dapat dibaca. Isi Tanggal atau pasangan Tahun dan Bulan.")
                 continue
             year, month = int(year), int(month)
         else:
@@ -837,13 +845,16 @@ def import_data(
         period_id = period_map.get((year, month))
         value_keys = ("Nilai BPS", "Nilai", "Luas", "nilai") if sumber == "bps" else ("Nilai Dinas", "Luas", "Nilai", "nilai", "Nilai BPS")
         value = pd.to_numeric(row_value(row, *value_keys), errors="coerce")
-        if not period_id or pd.isna(value):
-            skipped += 1
+        if not period_id:
+            record_skip(excel_row, f"Periode {year}-{month:02d} tidak tersedia atau tidak aktif di master periode.")
+            continue
+        if pd.isna(value) or not float("-inf") < float(value) < float("inf"):
+            record_skip(excel_row, f"Nilai kosong atau bukan angka terbatas; periksa kolom {', '.join(value_keys)}.")
             continue
 
         row_instansi_id = instansi_id or db.execute(text("SELECT id FROM master_instansi WHERE jenis_instansi=:jenis AND wilayah_id=:wilayah AND is_active=1 LIMIT 1"), {"jenis": sumber, "wilayah": region_id}).scalar()
         if not row_instansi_id:
-            skipped += 1
+            record_skip(excel_row, f"Instansi aktif sumber {sumber.upper()} tidak ditemukan untuk wilayah ini.")
             continue
 
         if sumber == "dinas":
@@ -870,7 +881,16 @@ def import_data(
         count += 1
 
     db.commit()
-    return {"message": f"Berhasil import {count} data; {skipped} baris dilewati.", "imported": count, "skipped": skipped, "sumber": sumber}
+    skipped = sum(skipped_by_reason.values())
+    return {
+        "message": f"Import selesai: {count} baris berhasil, {skipped} baris dilewati.",
+        "imported": count,
+        "skipped": skipped,
+        "skipped_by_reason": dict(skipped_by_reason),
+        "skipped_rows": skipped_rows,
+        "skipped_details_truncated": skipped > len(skipped_rows),
+        "sumber": sumber,
+    }
 
 
 
