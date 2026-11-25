@@ -30,6 +30,18 @@ const masterConfigs = {
 
 const emptyUser = { nama: "", email: "", password: "", role_id: "", instansi_id: "", wilayah_id: "" };
 const inputClass = "w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-600 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-400";
+const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+function parseMonthPeriod(value) {
+  const parts = String(value || "").trim().split(/\s+/);
+  if (parts.length !== 2) return null;
+  const yearPart = parts.find((part) => /^\d{4}$/.test(part));
+  const monthPart = parts.find((part) => !/^\d{4}$/.test(part));
+  const year = Number(yearPart);
+  const month = monthNames.findIndex((name) => name.toLowerCase() === monthPart?.toLowerCase()) + 1;
+  if (!yearPart || year < 1901 || year > 2155 || month < 1) return null;
+  return { tahun: year, nomor_periode: month, periode_label: `${monthNames[month - 1]} ${year}` };
+}
 
 function optionRows(type, options, form) {
   if (type === "indikator") return options.indikator || [];
@@ -60,6 +72,7 @@ export default function AdminManagement() {
   const [editing, setEditing] = useState(null);
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(emptyUser);
+  const [periodText, setPeriodText] = useState("");
   const [search, setSearch] = useState("");
   const [userPage, setUserPage] = useState(1);
   const [masterPage, setMasterPage] = useState(1);
@@ -135,6 +148,7 @@ export default function AdminManagement() {
     setEditing(row.id);
     setFormOpen(true);
     setForm(Object.fromEntries(config.fields.map(([name, , type]) => [name, type === "checkbox" ? Boolean(row[name]) : row[name] == null ? "" : String(row[name])] )));
+    setPeriodText(row.jenis_periode === "bulanan" ? `${monthNames[Number(row.nomor_periode) - 1] || row.nomor_periode} ${row.tahun}` : "");
     setNotice("");
   };
 
@@ -142,6 +156,7 @@ export default function AdminManagement() {
     setEditing(null);
     setFormOpen(true);
     setForm(section === "users" ? { ...emptyUser, role_id: String(options.roles[0]?.id || "") } : Object.fromEntries(config.fields.map(([name, , type]) => [name, type === "checkbox" ? true : ""])));
+    setPeriodText("");
     setNotice("");
   };
 
@@ -158,7 +173,13 @@ export default function AdminManagement() {
 
   const saveMaster = async (event) => {
     event.preventDefault(); setError(""); setNotice("");
-    const payload = Object.fromEntries(config.fields.map(([name, , type]) => [name, type === "checkbox" ? Number(Boolean(form[name])) : type === "number" ? (form[name] === "" || form[name] == null ? null : Number(form[name])) : ["indikator", "modul", "wilayah_instansi", "wilayah_parent"].includes(type) || ["modul_id", "indikator_id", "wilayah_id", "parent_id"].includes(name) ? (form[name] ? Number(form[name]) : null) : form[name]]).filter(([name]) => name in form));
+    const normalizedForm = { ...form };
+    if (masterName === "periode" && form.jenis_periode === "bulanan") {
+      const parsedPeriod = parseMonthPeriod(periodText);
+      if (!parsedPeriod) { setError("Format periode bulanan harus seperti ‘Juni 2026’ atau ‘2026 Juni’. Gunakan nama bulan lengkap."); return; }
+      Object.assign(normalizedForm, parsedPeriod);
+    }
+    const payload = Object.fromEntries(config.fields.map(([name, , type]) => [name, type === "checkbox" ? Number(Boolean(normalizedForm[name])) : type === "number" ? (normalizedForm[name] === "" || normalizedForm[name] == null ? null : Number(normalizedForm[name])) : ["indikator", "modul", "wilayah_instansi", "wilayah_parent"].includes(type) || ["modul_id", "indikator_id", "wilayah_id", "parent_id"].includes(name) ? (normalizedForm[name] ? Number(normalizedForm[name]) : null) : normalizedForm[name]]).filter(([name]) => name in normalizedForm));
     try {
       if (editing) await updateMasterRow(masterName, editing, payload);
       else await createMasterRow(masterName, payload);
@@ -231,12 +252,14 @@ export default function AdminManagement() {
           {formOpen ? (
             <form onSubmit={saveMaster} className="grid gap-4 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-2 dark:border-slate-600 dark:bg-slate-800">
               {config.fields.map(([name, label, type, required, choices]) => {
+                if (masterName === "periode" && form.jenis_periode === "bulanan" && ["nomor_periode", "periode_label"].includes(name)) return null;
                 if (type === "checkbox") return <label key={name} className="flex items-center gap-3 self-center text-sm font-semibold text-slate-700"><input type="checkbox" checked={Boolean(form[name])} onChange={(e) => setForm({ ...form, [name]: e.target.checked })}/>{label}</label>;
                 if (type === "textarea") return <label key={name} className="space-y-1.5 text-sm font-semibold text-slate-700">{label}<textarea required={required} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value })} className={`${inputClass} min-h-24`} /></label>;
+                if (masterName === "periode" && form.jenis_periode === "bulanan" && name === "tahun") return <label key="periode_bulanan" className="space-y-1.5 text-sm font-semibold text-slate-700">Periode bulanan<input required type="text" value={periodText} onChange={(e) => { setPeriodText(e.target.value); const parsed = parseMonthPeriod(e.target.value); if (parsed) setForm((old) => ({ ...old, ...parsed })); }} placeholder="Juni 2026 atau 2026 Juni" className={inputClass}/><span className="block text-xs font-normal text-slate-500 dark:text-slate-400">Gunakan nama bulan lengkap, misalnya Juni 2026 atau 2026 Juni.</span></label>;
                 const opts = choices || (type === "select" ? [] : fieldOptions(type, options, form));
                 const select = ["select", "indikator", "modul", "wilayah_instansi", "wilayah_parent"].includes(type);
                 const maxPeriodNumber = { bulanan: 12, triwulanan: 4, semester: 2, tahun: 1 }[form.jenis_periode];
-                return <label key={name} className="space-y-1.5 text-sm font-semibold text-slate-700">{label}{select ? <select required={required} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value, ...(name === "level_wilayah" ? { parent_id: "" } : {}) })} className={inputClass}><option value="">{type === "wilayah_parent" ? "Tanpa induk" : `Pilih ${label.toLowerCase()}`}</option>{opts.map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select> : <input required={required} type={type === "number" ? "number" : "text"} min={type === "number" ? (name === "tahun" ? 1901 : 1) : undefined} max={name === "tahun" ? 2155 : name === "nomor_periode" ? maxPeriodNumber : undefined} step={type === "number" ? 1 : undefined} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value })} className={inputClass}/>}</label>;
+                return <label key={name} className="space-y-1.5 text-sm font-semibold text-slate-700">{label}{select ? <select required={required} value={form[name] || ""} onChange={(e) => { setForm({ ...form, [name]: e.target.value, ...(name === "level_wilayah" ? { parent_id: "" } : {}) }); if (name === "jenis_periode") setPeriodText(""); }} className={inputClass}><option value="">{type === "wilayah_parent" ? "Tanpa induk" : `Pilih ${label.toLowerCase()}`}</option>{opts.map(([value, title]) => <option key={value} value={value}>{title}</option>)}</select> : <input required={required} type={type === "number" ? "number" : "text"} min={type === "number" ? (name === "tahun" ? 1901 : 1) : undefined} max={name === "tahun" ? 2155 : name === "nomor_periode" ? maxPeriodNumber : undefined} step={type === "number" ? 1 : undefined} value={form[name] || ""} onChange={(e) => setForm({ ...form, [name]: e.target.value })} className={inputClass}/>}</label>;
               })}
               <div className="flex gap-3 md:col-span-2"><button className="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-semibold text-white">{editing ? "Simpan perubahan" : "Simpan master"}</button><button type="button" onClick={() => { setEditing(null); setForm({}); setFormOpen(false); }} className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700"><X size={16}/>Batal</button></div>
             </form>
